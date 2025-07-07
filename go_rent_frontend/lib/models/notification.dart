@@ -8,6 +8,10 @@ class AppNotification {
   final bool showActions;
   final bool isRead;
   final String? comment;
+  final int? senderId;
+  final int? receiverId;
+  final String? senderName;
+  final String? receiverName;
 
   AppNotification({
     required this.id,
@@ -19,6 +23,10 @@ class AppNotification {
     required this.showActions,
     required this.isRead,
     this.comment,
+    this.senderId,
+    this.receiverId,
+    this.senderName,
+    this.receiverName,
   });
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
@@ -32,6 +40,10 @@ class AppNotification {
       showActions: json['show_actions'] ?? false,
       isRead: json['is_read'] ?? false,
       comment: json['comment'],
+      senderId: json['sender_id'],
+      receiverId: json['receiver_id'],
+      senderName: json['sender_name'],
+      receiverName: json['receiver_name'],
     );
   }
 
@@ -46,6 +58,10 @@ class AppNotification {
       'show_actions': showActions,
       'is_read': isRead,
       'comment': comment,
+      'sender_id': senderId,
+      'receiver_id': receiverId,
+      'sender_name': senderName,
+      'receiver_name': receiverName,
     };
   }
 }

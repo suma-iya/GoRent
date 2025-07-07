@@ -65,6 +65,11 @@ func main() {
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/tenant", handlers.AddTenantToFloorHandler).Methods("POST")
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/tenant", handlers.RemoveTenantHandler).Methods("DELETE")
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/payment", handlers.CreatePaymentHandler).Methods("POST")
+	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-payment", handlers.CreateAdvancePaymentRequestHandler).Methods("POST")
+
+	// Advance payment check and cancel routes
+	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-payment/check", handlers.CheckPendingAdvancePaymentHandler).Methods("GET")
+	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-payment", handlers.CancelAdvancePaymentHandler).Methods("DELETE")
 
 	// User routes
 	protectedRouter.HandleFunc("/users/phones", handlers.GetUserPhonesHandler).Methods("GET")
@@ -76,6 +81,7 @@ func main() {
 	protectedRouter.HandleFunc("/notifications/delete/{id}", handlers.DeleteNotificationHandler).Methods("DELETE")
 	protectedRouter.HandleFunc("/notifications/action", handlers.HandleTenantRequestAction).Methods("POST")
 	protectedRouter.HandleFunc("/notifications/send-comment", handlers.SendCommentHandler).Methods("POST")
+	protectedRouter.HandleFunc("/notifications/conversation", handlers.GetConversationHistoryHandler).Methods("GET")
 
 	// New payment notification route
 	protectedRouter.HandleFunc("/property/{id:[0-9]+}/floor/{floor_id:[0-9]+}/payment-notification", handlers.SendPaymentNotificationHandler).Methods("POST")

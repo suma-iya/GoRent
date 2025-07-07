@@ -4,8 +4,10 @@ class Floor {
   final int rent;
   final String createdAt;
   final int? tenant;
+  final String? tenantName;
   final String? status;
   final int? notificationId;
+  final bool hasPendingAdvancePayment;
 
   Floor({
     required this.id,
@@ -13,8 +15,10 @@ class Floor {
     required this.rent,
     required this.createdAt,
     this.tenant,
+    this.tenantName,
     this.status,
     this.notificationId,
+    this.hasPendingAdvancePayment = false,
   });
 
   factory Floor.fromJson(Map<String, dynamic> json) {
@@ -24,8 +28,10 @@ class Floor {
       rent: json['rent'],
       createdAt: json['created_at'],
       tenant: json['tenant'],
+      tenantName: json['tenant_name'],
       status: json['status'],
       notificationId: json['notification_id'],
+      hasPendingAdvancePayment: json['has_pending_advance_payment'] ?? false,
     );
   }
 
@@ -36,8 +42,10 @@ class Floor {
       'rent': rent,
       'created_at': createdAt,
       'tenant': tenant,
+      'tenant_name': tenantName,
       'status': status,
       'notification_id': notificationId,
+      'has_pending_advance_payment': hasPendingAdvancePayment,
     };
   }
 } 

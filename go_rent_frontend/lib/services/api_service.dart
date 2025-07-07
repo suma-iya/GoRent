@@ -857,6 +857,141 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getConversationHistory(int floorId) async {
+    try {
+      print('Fetching conversation history for floor: $floorId');
+      final response = await _client.get(
+        Uri.parse('$baseUrl/notifications/conversation?floor_id=$floorId'),
+        headers: _headers,
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success']) {
+          final conversations = data['conversations'] as List<dynamic>?;
+          if (conversations == null) {
+            return [];
+          }
+          return conversations.cast<Map<String, dynamic>>();
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load conversation history');
+        }
+      } else if (response.statusCode == 401) {
+        _sessionToken = null; // Clear invalid session token
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching conversation history: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<bool> createAdvancePaymentRequest({
+    required int propertyId,
+    required int floorId,
+    required int advanceUid,
+    required int money,
+    required int month,
+  }) async {
+    try {
+      print('Creating advance payment request for property: $propertyId, floor: $floorId');
+      final response = await _client.post(
+        Uri.parse('$baseUrl/property/$propertyId/floor/$floorId/advance-payment'),
+        headers: _headers,
+        body: json.encode({
+          'advance_uid': advanceUid,
+          'money': money,
+          'month': month,
+        }),
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 201) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return data['success'] ?? false;
+      } else if (response.statusCode == 401) {
+        _sessionToken = null; // Clear invalid session token
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error creating advance payment request: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<bool> checkPendingAdvancePayment(int floorId) async {
+    try {
+      print('Checking pending advance payment for floor: $floorId');
+      final response = await _client.get(
+        Uri.parse('$baseUrl/floor/$floorId/advance-payment/check'),
+        headers: _headers,
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return data['has_pending'] ?? false;
+      } else if (response.statusCode == 401) {
+        _sessionToken = null; // Clear invalid session token
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error checking pending advance payment: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<bool> cancelAdvancePaymentRequest(int floorId) async {
+    try {
+      print('Canceling advance payment request for floor: $floorId');
+      final response = await _client.delete(
+        Uri.parse('$baseUrl/floor/$floorId/advance-payment'),
+        headers: _headers,
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return data['success'] ?? false;
+      } else if (response.statusCode == 401) {
+        _sessionToken = null; // Clear invalid session token
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error canceling advance payment request: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
   void dispose() {
     _client.close();
   }

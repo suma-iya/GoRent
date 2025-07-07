@@ -63,8 +63,10 @@ type Floor struct {
 	Rent      int    `json:"rent"`
 	CreatedAt string `json:"created_at"`
 	Tenant    *int64 `json:"tenant,omitempty"`
+	TenantName *string `json:"tenant_name,omitempty"`
 	Status    string `json:"status,omitempty"`
 	NotificationID *int64 `json:"notification_id,omitempty"`
+	HasPendingAdvancePayment bool `json:"has_pending_advance_payment"`
 }
 
 type FloorRequest struct {
@@ -133,6 +135,10 @@ type Notification struct {
 	ShowActions bool `json:"show_actions"`
 	IsRead      bool `json:"is_read"`
 	Comment     *string `json:"comment,omitempty"`
+	SenderID    *int64  `json:"sender_id,omitempty"`
+	ReceiverID  *int64  `json:"receiver_id,omitempty"`
+	SenderName  *string `json:"sender_name,omitempty"`
+	ReceiverName *string `json:"receiver_name,omitempty"`
 }
 
 type NotificationsResponse struct {
@@ -143,6 +149,24 @@ type NotificationsResponse struct {
 
 type PaymentNotificationRequest struct {
 	Amount int `json:"amount"`
+}
+
+type AdvancePaymentRequest struct {
+	AdvanceUID int64 `json:"advance_uid"`
+	Money      int   `json:"money"`
+	Month      int   `json:"month"`
+}
+
+type AdvancePaymentResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	AdvanceID int64 `json:"advance_id,omitempty"`
+}
+
+type AdvancePaymentCheckResponse struct {
+	Success     bool   `json:"success"`
+	Message     string `json:"message"`
+	HasPending  bool   `json:"has_pending"`
 }
 
 func AddPropertyHandler(w http.ResponseWriter, r *http.Request) {
@@ -406,9 +430,13 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get all floors for this property
+	// Get all floors for this property with tenant names
 	floorsQuery := `
 		SELECT f.id, f.name, f.rent, f.created_at, f.tenant,
+		       CASE 
+		           WHEN u.name IS NULL OR u.name = '' THEN CONCAT('User ', u.id)
+		           ELSE u.name 
+		       END as tenant_name,
 		       EXISTS(
 		           SELECT 1 FROM notification n 
 		           WHERE n.fid = f.id AND n.status = 'pending'
@@ -418,8 +446,13 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 		           FROM notification n 
 		           WHERE n.fid = f.id AND n.status = 'pending'
 		           LIMIT 1
-		       ) as notification_id
+		       ) as notification_id,
+		       EXISTS(
+		           SELECT 1 FROM advance a 
+		           WHERE a.fid = f.id AND a.status = 'pending'
+		       ) as has_pending_advance_payment
 		FROM floor f
+		LEFT JOIN user u ON f.tenant = u.id
 		WHERE f.pid = ?
 		ORDER BY f.created_at DESC`
 	
@@ -436,14 +469,19 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var floor Floor
 		var tenant sql.NullInt64
+		var tenantName sql.NullString
 		var hasPendingRequest bool
 		var notificationID sql.NullInt64
-		if err := rows.Scan(&floor.ID, &floor.Name, &floor.Rent, &floor.CreatedAt, &tenant, &hasPendingRequest, &notificationID); err != nil {
+		var hasPendingAdvancePayment bool
+		if err := rows.Scan(&floor.ID, &floor.Name, &floor.Rent, &floor.CreatedAt, &tenant, &tenantName, &hasPendingRequest, &notificationID, &hasPendingAdvancePayment); err != nil {
 			fmt.Printf("Error scanning floor row: %v\n", err)
 			continue
 		}
 		if tenant.Valid {
 			floor.Tenant = &tenant.Int64
+		}
+		if tenantName.Valid {
+			floor.TenantName = &tenantName.String
 		}
 		if hasPendingRequest {
 			floor.Status = "pending"
@@ -451,6 +489,7 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 				floor.NotificationID = &notificationID.Int64
 			}
 		}
+		floor.HasPendingAdvancePayment = hasPendingAdvancePayment
 		floors = append(floors, floor)
 	}
 
@@ -734,11 +773,20 @@ func GetFloorsHandler(w http.ResponseWriter, r *http.Request) {
 	// Get all floors for this property
 	rows, err := db.Query(`
 		SELECT f.id, f.name, f.rent, f.created_at, f.tenant,
+		       CASE 
+		           WHEN u.name IS NULL OR u.name = '' THEN CONCAT('User ', u.id)
+		           ELSE u.name 
+		       END as tenant_name,
 		       EXISTS(
 		           SELECT 1 FROM notification n 
 		           WHERE n.fid = f.id AND n.status = 'pending'
-		       ) as has_pending_request
+		       ) as has_pending_request,
+		       EXISTS(
+		           SELECT 1 FROM advance a 
+		           WHERE a.fid = f.id AND a.status = 'pending'
+		       ) as has_pending_advance_payment
 		FROM floor f
+		LEFT JOIN user u ON f.tenant = u.id
 		WHERE f.pid = ?
 		ORDER BY f.created_at DESC`, propertyID)
 	
@@ -754,17 +802,23 @@ func GetFloorsHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var floor Floor
 		var tenant sql.NullInt64
+		var tenantName sql.NullString
 		var hasPendingRequest bool
-		if err := rows.Scan(&floor.ID, &floor.Name, &floor.Rent, &floor.CreatedAt, &tenant, &hasPendingRequest); err != nil {
+		var hasPendingAdvancePayment bool
+		if err := rows.Scan(&floor.ID, &floor.Name, &floor.Rent, &floor.CreatedAt, &tenant, &tenantName, &hasPendingRequest, &hasPendingAdvancePayment); err != nil {
 			fmt.Printf("Error scanning floor row: %v\n", err)
 			continue
 		}
 		if tenant.Valid {
 			floor.Tenant = &tenant.Int64
 		}
+		if tenantName.Valid {
+			floor.TenantName = &tenantName.String
+		}
 		if hasPendingRequest {
 			floor.Status = "pending"
 		}
+		floor.HasPendingAdvancePayment = hasPendingAdvancePayment
 		floors = append(floors, floor)
 	}
 
@@ -850,11 +904,17 @@ func GetFloorByIDHandler(w http.ResponseWriter, r *http.Request) {
 	// Get floor details
 	var floor Floor
 	var tenant sql.NullInt64
+	var tenantName sql.NullString
 	err = db.QueryRow(`
-		SELECT id, name, rent, created_at, tenant
-		FROM floor
-		WHERE id = ? AND pid = ?`, floorID, propertyID).Scan(
-		&floor.ID, &floor.Name, &floor.Rent, &floor.CreatedAt, &tenant)
+		SELECT f.id, f.name, f.rent, f.created_at, f.tenant, 
+		       CASE 
+		           WHEN u.name IS NULL OR u.name = '' THEN CONCAT('User ', u.id)
+		           ELSE u.name 
+		       END as tenant_name
+		FROM floor f
+		LEFT JOIN user u ON f.tenant = u.id
+		WHERE f.id = ? AND f.pid = ?`, floorID, propertyID).Scan(
+		&floor.ID, &floor.Name, &floor.Rent, &floor.CreatedAt, &tenant, &tenantName)
 	
 	if err != nil {
 		fmt.Printf("Error querying floor: %v\n", err)
@@ -865,6 +925,9 @@ func GetFloorByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	if tenant.Valid {
 		floor.Tenant = &tenant.Int64
+	}
+	if tenantName.Valid {
+		floor.TenantName = &tenantName.String
 	}
 
 	fmt.Printf("Found floor: ID=%d, Name=%s\n", floor.ID, floor.Name)
@@ -1591,10 +1654,15 @@ func GetUserNotificationsHandler(w http.ResponseWriter, r *http.Request) {
 				ELSE false
 			END as show_actions,
 			COALESCE(n.is_read, false) as is_read,
-			n.comment
+			n.comment,
+			n.sender, n.receiver,
+			u1.name as sender_name,
+			u2.name as receiver_name
 		FROM notification n
 		JOIN property p ON n.pid = p.id
 		JOIN floor f ON n.fid = f.id
+		JOIN user u1 ON n.sender = u1.id
+		JOIN user u2 ON n.receiver = u2.id
 		WHERE n.receiver = ?
 		ORDER BY n.created_at DESC
 	`
@@ -1613,6 +1681,8 @@ func GetUserNotificationsHandler(w http.ResponseWriter, r *http.Request) {
 	var notifications []Notification
 	for rows.Next() {
 		var n Notification
+		var senderID, receiverID int64
+		var senderName, receiverName string
 		if err := rows.Scan(
 			&n.ID, &n.Message, &n.Status, &n.CreatedAt,
 			&n.Property.ID, &n.Property.Name,
@@ -1620,10 +1690,17 @@ func GetUserNotificationsHandler(w http.ResponseWriter, r *http.Request) {
 			&n.ShowActions,
 			&n.IsRead,
 			&n.Comment,
+			&senderID, &receiverID,
+			&senderName, &receiverName,
 		); err != nil {
 			fmt.Printf("Error scanning notification row: %v\n", err)
 			continue
 		}
+		
+		n.SenderID = &senderID
+		n.ReceiverID = &receiverID
+		n.SenderName = &senderName
+		n.ReceiverName = &receiverName
 		
 		// Debug logging for each notification
 		fmt.Printf("Notification: ID=%d, Message='%s', Status='%s', ShowActions=%v, IsRead=%v, Comment=%v\n", 
@@ -2177,8 +2254,9 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if this is a payment notification or tenant request
+	// Check if this is a payment notification, advance payment notification, or tenant request
 	isPaymentNotification := strings.HasPrefix(notification.Message, "Payment amount:")
+	isAdvancePaymentNotification := strings.HasPrefix(notification.Message, "Advance payment request:")
 	
 	if isPaymentNotification {
 		// Handle payment notification - just update status for now
@@ -2203,6 +2281,40 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 			// fmt.Printf("Cleared pending status from floor ID: %d", notification.FloorID)
 		}
 		// If rejected, just update the notification status (already done above)
+		
+	} else if isAdvancePaymentNotification {
+		// Handle advance payment notification
+		if request.Accept {
+			// Advance payment accepted - update the advance record status
+			_, err = tx.Exec(`
+				UPDATE advance 
+				SET status = 'accepted', updated_at = NOW(), updated_by = ?
+				WHERE fid = ? AND status = 'pending'
+			`, userID, notification.FloorID)
+			
+			if err != nil {
+				fmt.Printf("Error updating advance payment status: %v\n", err)
+				http.Error(w, "Failed to update advance payment status", http.StatusInternalServerError)
+				return
+			}
+			
+			fmt.Printf("Advance payment accepted: notification ID=%d, floor=%d", notification.ID, notification.FloorID)
+		} else {
+			// Advance payment rejected - update the advance record status
+			_, err = tx.Exec(`
+				UPDATE advance 
+				SET status = 'rejected', updated_at = NOW(), updated_by = ?
+				WHERE fid = ? AND status = 'pending'
+			`, userID, notification.FloorID)
+			
+			if err != nil {
+				fmt.Printf("Error updating advance payment status: %v\n", err)
+				http.Error(w, "Failed to update advance payment status", http.StatusInternalServerError)
+				return
+			}
+			
+			fmt.Printf("Advance payment rejected: notification ID=%d, floor=%d", notification.ID, notification.FloorID)
+		}
 		
 	} else {
 		// Handle tenant request
@@ -2276,6 +2388,26 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 					responseMessage = "Payment request is rejected"
 				}
 			}
+		} else if isAdvancePaymentNotification {
+			// Extract amount and month from the original message for advance payment notifications
+			// Original message format: "Advance payment request: X tk for MonthName"
+			advanceRegex := regexp.MustCompile(`Advance payment request:\s*([0-9]+)\s*tk\s*for\s*([A-Za-z]+)`)
+			matches := advanceRegex.FindStringSubmatch(notification.Message)
+			if len(matches) >= 3 {
+				amount := matches[1]
+				monthName := matches[2]
+				if request.Accept {
+					responseMessage = fmt.Sprintf("Advance payment of %s tk for %s is accepted", amount, monthName)
+				} else {
+					responseMessage = fmt.Sprintf("Advance payment of %s tk for %s is rejected", amount, monthName)
+				}
+			} else {
+				if request.Accept {
+					responseMessage = "Advance payment request is accepted"
+				} else {
+					responseMessage = "Advance payment request is rejected"
+				}
+			}
 		} else {
 			// Handle tenant request
 			if request.Accept {
@@ -2321,7 +2453,9 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 
 	// Send response
 	actionType := "payment notification"
-	if !isPaymentNotification {
+	if isAdvancePaymentNotification {
+		actionType = "advance payment notification"
+	} else if !isPaymentNotification {
 		actionType = "tenant request"
 	}
 	
@@ -3103,12 +3237,12 @@ func SendCommentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Determine the new notification's sender and receiver
+	// The new notification should be from the user who made the comment to the other user
 	var newSender, newReceiver int64
+	newSender = userID // The person who made the comment
 	if userID == originalNotification.Sender {
-		newSender = originalNotification.Sender
 		newReceiver = originalNotification.Receiver
 	} else {
-		newSender = originalNotification.Receiver
 		newReceiver = originalNotification.Sender
 	}
 
@@ -3118,6 +3252,10 @@ func SendCommentHandler(w http.ResponseWriter, r *http.Request) {
 		newStatus = "accepted"
 	} else if originalNotification.Status == "rejected" {
 		newStatus = "rejected"
+	} else if originalNotification.Status == "pending" {
+		// For pending notifications, create a comment notification that doesn't show Accept/Reject buttons
+		// Use "comment" status to indicate this is just a comment, not an actionable notification
+		newStatus = "comment"
 	} else {
 		newStatus = "pending" // If original status is NULL or any other value
 	}
@@ -3193,5 +3331,629 @@ func SendCommentHandler(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Comment sent successfully",
 		"notification_id": newNotificationID,
+	})
+}
+
+// GetConversationHistoryHandler handles GET requests to retrieve conversation history between users
+func GetConversationHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Get Conversation History Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Method not allowed",
+		})
+		return
+	}
+
+	// Get user ID from session
+	userID := getUserIDFromContext(r)
+	if userID == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	// Get the floor ID from query parameters
+	floorIDStr := r.URL.Query().Get("floor_id")
+	if floorIDStr == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "floor_id parameter is required",
+		})
+		return
+	}
+
+	floorID, err := strconv.ParseInt(floorIDStr, 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Invalid floor_id parameter",
+		})
+		return
+	}
+
+	// Get database connection
+	db, err := config.GetDBConnection()
+	if err != nil {
+		fmt.Printf("Database connection error: %v\n", err)
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+
+	// Query to get all notifications for the same floor between the same users
+	rows, err := db.Query(`
+		SELECT 
+			n.id,
+			n.message,
+			n.status,
+			n.created_at,
+			n.comment,
+			n.sender,
+			n.receiver,
+			p.id as property_id,
+			p.name as property_name,
+			f.id as floor_id,
+			f.name as floor_name,
+			u1.name as sender_name,
+			u2.name as receiver_name
+		FROM notification n
+		JOIN property p ON n.pid = p.id
+		JOIN floor f ON n.fid = f.id
+		JOIN user u1 ON n.sender = u1.id
+		JOIN user u2 ON n.receiver = u2.id
+		WHERE n.fid = ? AND (
+			(n.sender = ? AND n.receiver IN (
+				SELECT DISTINCT 
+					CASE 
+						WHEN sender = ? THEN receiver 
+						ELSE sender 
+					END
+				FROM notification 
+				WHERE fid = ? AND (sender = ? OR receiver = ?)
+			)) OR
+			(n.receiver = ? AND n.sender IN (
+				SELECT DISTINCT 
+					CASE 
+						WHEN sender = ? THEN receiver 
+						ELSE sender 
+					END
+				FROM notification 
+				WHERE fid = ? AND (sender = ? OR receiver = ?)
+			))
+		)
+		ORDER BY n.created_at DESC
+	`, floorID, userID, userID, floorID, userID, userID, userID, userID, floorID, userID, userID)
+
+	if err != nil {
+		fmt.Printf("Error querying conversation history: %v\n", err)
+		http.Error(w, "Failed to get conversation history", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var conversations []map[string]interface{}
+	for rows.Next() {
+		var conv struct {
+			ID           int64
+			Message      string
+			Status       sql.NullString
+			CreatedAt    string
+			Comment      sql.NullString
+			Sender       int64
+			Receiver     int64
+			PropertyID   int64
+			PropertyName string
+			FloorID      int64
+			FloorName    string
+			SenderName   string
+			ReceiverName string
+		}
+
+		err := rows.Scan(
+			&conv.ID,
+			&conv.Message,
+			&conv.Status,
+			&conv.CreatedAt,
+			&conv.Comment,
+			&conv.Sender,
+			&conv.Receiver,
+			&conv.PropertyID,
+			&conv.PropertyName,
+			&conv.FloorID,
+			&conv.FloorName,
+			&conv.SenderName,
+			&conv.ReceiverName,
+		)
+
+		if err != nil {
+			fmt.Printf("Error scanning conversation row: %v\n", err)
+			continue
+		}
+
+		conversation := map[string]interface{}{
+			"id":           conv.ID,
+			"message":      conv.Message,
+			"status":       conv.Status.String,
+			"created_at":   conv.CreatedAt,
+			"comment":      conv.Comment.String,
+			"sender":       conv.Sender,
+			"receiver":     conv.Receiver,
+			"sender_name":  conv.SenderName,
+			"receiver_name": conv.ReceiverName,
+			"property": map[string]interface{}{
+				"id":   conv.PropertyID,
+				"name": conv.PropertyName,
+			},
+			"floor": map[string]interface{}{
+				"id":   conv.FloorID,
+				"name": conv.FloorName,
+			},
+			"is_from_me": conv.Sender == userID,
+		}
+
+		conversations = append(conversations, conversation)
+	}
+
+	if err = rows.Err(); err != nil {
+		fmt.Printf("Error iterating conversation rows: %v\n", err)
+		http.Error(w, "Failed to process conversation history", http.StatusInternalServerError)
+		return
+	}
+
+	// Send response
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Conversation history retrieved successfully",
+		"conversations": conversations,
+	})
+}
+
+// CreateAdvancePaymentRequestHandler handles POST requests to create an advance payment request
+func CreateAdvancePaymentRequestHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Create Advance Payment Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Method not allowed", 0})
+		return
+	}
+
+	// Get user ID from session
+	userID := getUserIDFromContext(r)
+	fmt.Printf("User ID from session: %d\n", userID)
+	if userID == 0 {
+		fmt.Println("No user ID found in session")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "User not authenticated", 0})
+		return
+	}
+
+	// Extract property ID and floor ID from URL
+	pathParts := strings.Split(r.URL.Path, "/")
+	var cleanParts []string
+	for _, part := range pathParts {
+		if part != "" {
+			cleanParts = append(cleanParts, part)
+		}
+	}
+
+	fmt.Printf("URL parts: %v\n", cleanParts)
+
+	if len(cleanParts) != 5 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid URL format", 0})
+		return
+	}
+
+	propertyID, err := strconv.ParseInt(cleanParts[1], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid property ID", 0})
+		return
+	}
+
+	floorID, err := strconv.ParseInt(cleanParts[3], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid floor ID", 0})
+		return
+	}
+
+	fmt.Printf("Property ID: %d, Floor ID: %d\n", propertyID, floorID)
+
+	var req AdvancePaymentRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		fmt.Printf("Error decoding request body: %v\n", err)
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid request body", 0})
+		return
+	}
+
+	fmt.Printf("Request body: %+v\n", req)
+
+	// Validate request
+	if req.AdvanceUID <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid advance_uid", 0})
+		return
+	}
+
+	if req.Money <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Money amount must be greater than 0", 0})
+		return
+	}
+
+	if req.Month <= 0 || req.Month > 12 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Month must be between 1 and 12", 0})
+		return
+	}
+
+	db, err := config.GetDBConnection()
+	if err != nil {
+		fmt.Printf("Database connection error: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database connection error", 0})
+		return
+	}
+
+	// Check if user is a manager of the property
+	var isManager bool
+	managerQuery := "SELECT EXISTS(SELECT 1 FROM takes_care_of WHERE uid = ? AND pid = ?)"
+	fmt.Printf("Executing manager check query: %s with userID: %d, propertyID: %d\n", managerQuery, userID, propertyID)
+	
+	err = db.QueryRow(managerQuery, userID, propertyID).Scan(&isManager)
+	if err != nil {
+		fmt.Printf("Error checking manager status: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database error", 0})
+		return
+	}
+
+	fmt.Printf("Is user %d manager of property %d: %v\n", userID, propertyID, isManager)
+
+	if !isManager {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Only managers can create advance payment requests", 0})
+		return
+	}
+
+	// Verify that the floor exists and belongs to the property
+	var floorExists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM floor WHERE id = ? AND pid = ?)", floorID, propertyID).Scan(&floorExists)
+	if err != nil {
+		fmt.Printf("Error checking floor existence: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database error", 0})
+		return
+	}
+
+	if !floorExists {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Floor not found", 0})
+		return
+	}
+
+	// Verify that the advance_uid user exists
+	var userExists bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM user WHERE id = ?)", req.AdvanceUID).Scan(&userExists)
+	if err != nil {
+		fmt.Printf("Error checking user existence: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database error", 0})
+		return
+	}
+
+	if !userExists {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "User not found", 0})
+		return
+	}
+
+	// Generate random ID for advance payment
+	advanceID, err := utils.GenerateRandomID()
+	if err != nil {
+		fmt.Printf("Error generating advance payment ID: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Error generating advance payment ID", 0})
+		return
+	}
+
+	// Insert advance payment record
+	currentTime := time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02")
+	_, err = db.Exec(`
+		INSERT INTO advance (
+			id, advance_uid, money, month, fid, created_at, created_by, updated_at, updated_by, status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		advanceID,
+		req.AdvanceUID,
+		req.Money,
+		req.Month,
+		floorID,
+		currentTime,
+		userID,
+		currentTime,
+		userID,
+		"pending",
+	)
+
+	if err != nil {
+		fmt.Printf("Error creating advance payment record: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, fmt.Sprintf("Error creating advance payment record: %v", err), 0})
+		return
+	}
+
+	// Create notification for the advance payment request
+	notificationID, err := utils.GenerateRandomID()
+	if err != nil {
+		fmt.Printf("Error generating notification ID: %v\n", err)
+		// Don't fail the entire request if notification creation fails
+		fmt.Printf("Failed to create notification for advance payment")
+	} else {
+		// Create notification message with payment amount and month name
+		monthNames := []string{
+			"", "January", "February", "March", "April", "May", "June",
+			"July", "August", "September", "October", "November", "December",
+		}
+		monthName := monthNames[req.Month]
+		message := fmt.Sprintf("Advance payment request: %d tk for %s", req.Money, monthName)
+
+		// Insert notification
+		_, err = db.Exec(`
+			INSERT INTO notification (
+				id, message, sender, receiver, pid, fid,
+				status, created_at, created_by, updated_at, updated_by, is_read
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			notificationID,
+			message,
+			userID, // sender (manager)
+			req.AdvanceUID, // receiver (tenant)
+			propertyID,
+			floorID,
+			"pending",
+			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
+			userID,
+			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
+			userID,
+			false, // is_read initially false
+		)
+
+		if err != nil {
+			fmt.Printf("Error creating notification: %v\n", err)
+			// Don't fail the entire request if notification creation fails
+			fmt.Printf("Failed to create notification for advance payment")
+		} else {
+			fmt.Printf("Successfully created notification ID: %d for advance payment request", notificationID)
+		}
+	}
+
+	fmt.Printf("Successfully created advance payment record ID: %d for floor ID: %d and user ID: %d\n", advanceID, floorID, req.AdvanceUID)
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(AdvancePaymentResponse{
+		Success:   true,
+		Message:   "Advance payment request created successfully",
+		AdvanceID: advanceID,
+	})
+}
+
+// CheckPendingAdvancePaymentHandler handles GET requests to check if there's a pending advance payment for a floor
+func CheckPendingAdvancePaymentHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Check Pending Advance Payment Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{false, "Method not allowed", false})
+		return
+	}
+
+	// Get user ID from session
+	userID := getUserIDFromContext(r)
+	fmt.Printf("User ID from session: %d\n", userID)
+	if userID == 0 {
+		fmt.Println("No user ID found in session")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{false, "User not authenticated", false})
+		return
+	}
+
+	// Extract floor ID from URL
+	pathParts := strings.Split(r.URL.Path, "/")
+	var cleanParts []string
+	for _, part := range pathParts {
+		if part != "" {
+			cleanParts = append(cleanParts, part)
+		}
+	}
+
+	fmt.Printf("URL parts: %v\n", cleanParts)
+
+	if len(cleanParts) != 3 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{false, "Invalid URL format", false})
+		return
+	}
+
+	floorID, err := strconv.ParseInt(cleanParts[1], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{false, "Invalid floor ID", false})
+		return
+	}
+
+	fmt.Printf("Floor ID: %d\n", floorID)
+
+	db, err := config.GetDBConnection()
+	if err != nil {
+		fmt.Printf("Database connection error: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{false, "Database connection error", false})
+		return
+	}
+
+	// Check if there's a pending advance payment for this floor
+	var hasPending bool
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM advance WHERE fid = ? AND status = 'pending')", floorID).Scan(&hasPending)
+	if err != nil {
+		fmt.Printf("Error checking pending advance payment: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{false, "Database error", false})
+		return
+	}
+
+	fmt.Printf("Floor %d has pending advance payment: %v\n", floorID, hasPending)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(AdvancePaymentCheckResponse{
+		Success:    true,
+		Message:    "Advance payment status checked successfully",
+		HasPending: hasPending,
+	})
+}
+
+// CancelAdvancePaymentHandler handles DELETE requests to cancel an advance payment request
+func CancelAdvancePaymentHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Cancel Advance Payment Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodDelete {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Method not allowed", 0})
+		return
+	}
+
+	// Get user ID from session
+	userID := getUserIDFromContext(r)
+	fmt.Printf("User ID from session: %d\n", userID)
+	if userID == 0 {
+		fmt.Println("No user ID found in session")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "User not authenticated", 0})
+		return
+	}
+
+	// Extract floor ID from URL
+	pathParts := strings.Split(r.URL.Path, "/")
+	var cleanParts []string
+	for _, part := range pathParts {
+		if part != "" {
+			cleanParts = append(cleanParts, part)
+		}
+	}
+
+	fmt.Printf("URL parts: %v\n", cleanParts)
+
+	if len(cleanParts) != 3 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid URL format", 0})
+		return
+	}
+
+	floorID, err := strconv.ParseInt(cleanParts[1], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Invalid floor ID", 0})
+		return
+	}
+
+	fmt.Printf("Floor ID: %d\n", floorID)
+
+	db, err := config.GetDBConnection()
+	if err != nil {
+		fmt.Printf("Database connection error: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database connection error", 0})
+		return
+	}
+
+	// Get the property ID for this floor to check if user is manager
+	var propertyID int64
+	err = db.QueryRow("SELECT pid FROM floor WHERE id = ?", floorID).Scan(&propertyID)
+	if err != nil {
+		fmt.Printf("Error getting property ID for floor: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database error", 0})
+		return
+	}
+
+	// Check if user is a manager of the property
+	var isManager bool
+	managerQuery := "SELECT EXISTS(SELECT 1 FROM takes_care_of WHERE uid = ? AND pid = ?)"
+	fmt.Printf("Executing manager check query: %s with userID: %d, propertyID: %d\n", managerQuery, userID, propertyID)
+	
+	err = db.QueryRow(managerQuery, userID, propertyID).Scan(&isManager)
+	if err != nil {
+		fmt.Printf("Error checking manager status: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database error", 0})
+		return
+	}
+
+	fmt.Printf("Is user %d manager of property %d: %v\n", userID, propertyID, isManager)
+
+	if !isManager {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Only managers can cancel advance payment requests", 0})
+		return
+	}
+
+	// Delete the pending advance payment record
+	result, err := db.Exec("DELETE FROM advance WHERE fid = ? AND status = 'pending'", floorID)
+	if err != nil {
+		fmt.Printf("Error deleting advance payment record: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, fmt.Sprintf("Error deleting advance payment record: %v", err), 0})
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		fmt.Printf("Error getting rows affected: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Database error", 0})
+		return
+	}
+
+	if rowsAffected == 0 {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "No pending advance payment found for this floor", 0})
+		return
+	}
+
+	fmt.Printf("Successfully deleted advance payment record for floor ID: %d\n", floorID)
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(AdvancePaymentResponse{
+		Success:   true,
+		Message:   "Advance payment request cancelled successfully",
+		AdvanceID: 0,
 	})
 }

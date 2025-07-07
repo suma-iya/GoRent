@@ -181,14 +181,14 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                 label: 'Address',
                 hint: 'Enter property address',
                 icon: Icons.location_on_rounded,
-                maxLines: 2,
-              ),
+              maxLines: 2,
+            ),
               const SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
                     child: TextButton(
-                      onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
@@ -202,7 +202,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                           fontWeight: FontWeight.w600,
                           color: _textSecondary,
                         ),
-                      ),
+          ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -302,8 +302,8 @@ class _PropertiesScreenState extends State<PropertiesScreen>
           ),
         ),
       ],
-    );
-  }
+                );
+              }
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(

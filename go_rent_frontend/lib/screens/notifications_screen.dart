@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../models/notification.dart' as models;
+import 'conversation_history_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -144,6 +145,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     }
+  }
+
+  void _viewConversation(models.AppNotification notification) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ConversationHistoryScreen(
+          floorId: notification.floor.id,
+          propertyName: notification.property.name,
+          floorName: notification.floor.name,
+        ),
+      ),
+    );
   }
 
   String _formatDate(String dateStr) {
@@ -352,7 +366,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => _markNotificationsAsRead(),
+          onTap: () {
+            _markNotificationsAsRead();
+            _viewConversation(notification);
+          },
                             child: Padding(
             padding: const EdgeInsets.all(20),
                               child: Column(
@@ -380,14 +397,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                       ),
                     Expanded(
                       child: Text(
-                        notification.message,
+                                    notification.message,
                         style: TextStyle(
-                          fontSize: 16,
+                                      fontSize: 16,
                           fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w600,
                           color: notification.isRead ? Colors.grey.shade700 : Colors.black87,
                           height: 1.4,
-                        ),
-                      ),
+                                    ),
+                                  ),
                     ),
                   ],
                 ),
@@ -545,7 +562,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                           const Color(0xFFF44336),
                           () => _handleNotificationAction(notification, false),
                         ),
-                      ],
+                        if (notification.comment == null || notification.comment!.isEmpty)
+                          _buildActionButton(
+                            Icons.comment,
+                            'Add Comment',
+                            const Color(0xFF2196F3),
+                            () {
+                              setState(() {
+                                _showCommentInput[notification.id] = true;
+                                _commentControllers[notification.id] = TextEditingController();
+                              });
+                            },
+                                        ),
+                                      ],
                       if ((notification.comment == null || notification.comment!.isEmpty) &&
                           !(notification.status == 'pending' && notification.showActions) &&
                           _showCommentInput[notification.id] != true)
@@ -559,54 +588,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                               _commentControllers[notification.id] = TextEditingController();
                             });
                           },
-                        ),
-                    ],
+                                      ),
+                                    ],
                   ),
-                ],
+                                ],
+
+
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(IconData icon, String text, {bool isRead = false, Color? color}) {
-    // Special handling for status rows to always show in color
-    bool isStatusRow = text.startsWith('Status:');
-    
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: isRead ? Colors.grey.shade200 : const Color(0xFFE3F2FD),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              icon,
-              size: 16,
-              color: isRead ? Colors.grey.shade600 : const Color(0xFF2196F3),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              text,
-              style: TextStyle(
-                color: isStatusRow 
-                    ? (color ?? Colors.black87) // Always use color for status
-                    : (isRead ? Colors.grey.shade600 : (color ?? Colors.black87)), // Normal read/unread logic for others
-                fontWeight: isRead ? FontWeight.w400 : FontWeight.w500,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+                              ),
+                            ),
+                          );
   }
 
   Widget _buildActionButton(IconData icon, String label, Color color, VoidCallback onPressed) {
@@ -644,8 +637,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
-                              ),
-                            ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -654,16 +647,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
     );
   }
 
-  List<Color> _getStatusGradient(String status) {
-    switch (status) {
-      case 'accepted':
-        return [const Color(0xFF4CAF50), const Color(0xFF66BB6A)];
-      case 'rejected':
-        return [const Color(0xFFF44336), const Color(0xFFEF5350)];
-      case 'pending':
-        return [const Color(0xFFFF9800), const Color(0xFFFFB74D)];
-      default:
-        return [const Color(0xFF9E9E9E), const Color(0xFFBDBDBD)];
-    }
+  Widget _buildInfoRow(IconData icon, String text, {bool isRead = false, Color? color}) {
+    // Special handling for status rows to always show in color
+    bool isStatusRow = text.startsWith('Status:');
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: isRead ? Colors.grey.shade200 : const Color(0xFFE3F2FD),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: isRead ? Colors.grey.shade600 : const Color(0xFF2196F3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isStatusRow 
+                    ? (color ?? Colors.black87) // Always use color for status
+                    : (isRead ? Colors.grey.shade600 : (color ?? Colors.black87)), // Normal read/unread logic for others
+                fontWeight: isRead ? FontWeight.w400 : FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+                                        ),
+                                      ],
+      ),
+    );
   }
+
+
 }
