@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+import 'package:image/image.dart' as img;
 import '../models/property.dart';
 import '../services/api_service.dart';
 import 'property_details_screen.dart';
@@ -114,146 +118,332 @@ class _PropertiesScreenState extends State<PropertiesScreen>
     HapticFeedback.mediumImpact();
     final nameController = TextEditingController();
     final addressController = TextEditingController();
+    File? selectedImage;
+    String? imageBase64;
 
     return showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: _cardColor,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                spreadRadius: 0,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _managedColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.add_home_rounded,
-                  color: _managedColor,
-                  size: 32,
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Add New Property',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: _textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Create a new property listing to manage',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: _textSecondary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildModernTextField(
-                controller: nameController,
-                label: 'Property Name',
-                hint: 'Enter property name',
-                icon: Icons.home_rounded,
-            ),
-            const SizedBox(height: 16),
-              _buildModernTextField(
-              controller: addressController,
-                label: 'Address',
-                hint: 'Enter property address',
-                icon: Icons.location_on_rounded,
-              maxLines: 2,
-            ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-            onPressed: () => Navigator.pop(context),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: _textSecondary,
-                        ),
-          ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _managedColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-            onPressed: () async {
-              if (nameController.text.isEmpty || addressController.text.isEmpty) {
-                          _showSnackBar('Please fill all fields', isError: true);
-                return;
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          Future<void> pickImage() async {
+            try {
+              final ImagePicker picker = ImagePicker();
+              final XFile? image = await picker.pickImage(
+                source: ImageSource.gallery,
+                maxWidth: 1024,
+                maxHeight: 1024,
+                imageQuality: 80,
+              );
+              
+              if (image != null) {
+                selectedImage = File(image.path);
+                
+                // Convert image to base64
+                final bytes = await selectedImage!.readAsBytes();
+                imageBase64 = base64Encode(bytes);
+                
+                setDialogState(() {});
               }
+            } catch (e) {
+              _showSnackBar('Error picking image: $e', isError: true);
+            }
+          }
 
-              try {
-                final success = await _apiService.addProperty(
-                  nameController.text,
-                  addressController.text,
-                );
+          Future<void> takePhoto() async {
+            try {
+              final ImagePicker picker = ImagePicker();
+              final XFile? image = await picker.pickImage(
+                source: ImageSource.camera,
+                maxWidth: 1024,
+                maxHeight: 1024,
+                imageQuality: 80,
+              );
+              
+              if (image != null) {
+                selectedImage = File(image.path);
+                
+                // Convert image to base64
+                final bytes = await selectedImage!.readAsBytes();
+                imageBase64 = base64Encode(bytes);
+                
+                setDialogState(() {});
+              }
+            } catch (e) {
+              _showSnackBar('Error taking photo: $e', isError: true);
+            }
+          }
 
-                if (success) {
-                  Navigator.pop(context);
-                            _loadProperties();
-                            _showSnackBar('Property added successfully');
-                } else {
-                  throw Exception('Failed to add property');
-                }
-              } catch (e) {
-                          _showSnackBar('Error: $e', isError: true);
-                        }
-                      },
-                      child: const Text(
-                        'Add Property',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 10),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: _managedColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.add_home_rounded,
+                        color: _managedColor,
+                        size: 32,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Add New Property',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: _textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Create a new property listing to manage',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: _textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    
+                    // Photo upload section
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Property Photo (Optional)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: _textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (selectedImage != null) ...[
+                          Container(
+                            width: double.infinity,
+                            height: 200,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _managedColor.withOpacity(0.2),
+                                width: 2,
+                              ),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.file(
+                                selectedImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    selectedImage = null;
+                                    imageBase64 = null;
+                                    setDialogState(() {});
+                                  },
+                                  icon: const Icon(Icons.delete_rounded),
+                                  label: const Text('Remove'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red.shade600,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: TextButton.icon(
+                                  onPressed: pickImage,
+                                  icon: const Icon(Icons.edit_rounded),
+                                  label: const Text('Change'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: _managedColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          Container(
+                            width: double.infinity,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: _managedColor.withOpacity(0.05),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _managedColor.withOpacity(0.2),
+                                width: 2,
+                                style: BorderStyle.solid,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  size: 32,
+                                  color: _managedColor.withOpacity(0.6),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Add a photo of your property',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: _textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: takePhoto,
+                                  icon: const Icon(Icons.camera_alt_rounded),
+                                  label: const Text('Camera'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: _managedColor,
+                                    side: BorderSide(color: _managedColor),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: pickImage,
+                                  icon: const Icon(Icons.photo_library_rounded),
+                                  label: const Text('Gallery'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: _managedColor,
+                                    side: BorderSide(color: _managedColor),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 24),
+                    _buildModernTextField(
+                      controller: nameController,
+                      label: 'Property Name',
+                      hint: 'Enter property name',
+                      icon: Icons.home_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildModernTextField(
+                      controller: addressController,
+                      label: 'Address',
+                      hint: 'Enter property address',
+                      icon: Icons.location_on_rounded,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 32),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Cancel',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: _textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _managedColor,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            onPressed: () async {
+                              if (nameController.text.isEmpty || addressController.text.isEmpty) {
+                                _showSnackBar('Please fill all required fields', isError: true);
+                                return;
+                              }
+
+                              try {
+                                final success = await _apiService.addProperty(
+                                  nameController.text,
+                                  addressController.text,
+                                  photoBase64: imageBase64,
+                                );
+
+                                if (success) {
+                                  Navigator.pop(context);
+                                  _loadProperties();
+                                  _showSnackBar('Property added successfully');
+                                } else {
+                                  throw Exception('Failed to add property');
+                                }
+                              } catch (e) {
+                                _showSnackBar('Error: $e', isError: true);
+                              }
+                            },
+                            child: const Text(
+                              'Add Property',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -625,7 +815,10 @@ class _PropertiesScreenState extends State<PropertiesScreen>
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => PropertyDetailsScreen(property: property),
+                  builder: (context) => PropertyDetailsScreen(
+                    property: property,
+                    isManagedProperty: isManaged,
+                  ),
                 ),
               );
             },
@@ -636,22 +829,58 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                 Hero(
                   tag: 'property_${property.id}',
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    width: 60,
+                    height: 60,
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          themeColor.withOpacity(0.2),
-                          themeColor.withOpacity(0.1),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: themeColor.withOpacity(0.2),
+                        width: 1,
+                      ),
                     ),
-                    child: Icon(
-                      isManaged ? Icons.business_rounded : Icons.person_rounded,
-                      color: themeColor,
-                      size: 28,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: property.photo != null && property.photo!.isNotEmpty
+                          ? Image.memory(
+                              base64Decode(property.photo!),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        themeColor.withOpacity(0.2),
+                                        themeColor.withOpacity(0.1),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    isManaged ? Icons.business_rounded : Icons.person_rounded,
+                                    color: themeColor,
+                                    size: 28,
+                                  ),
+                                );
+                              },
+                            )
+                          : Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    themeColor.withOpacity(0.2),
+                                    themeColor.withOpacity(0.1),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: Icon(
+                                isManaged ? Icons.business_rounded : Icons.person_rounded,
+                                color: themeColor,
+                                size: 28,
+                              ),
+                            ),
                     ),
                   ),
                 ),

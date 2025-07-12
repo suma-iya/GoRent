@@ -26,8 +26,9 @@ func getUserIDFromContext(r *http.Request) int64 {
 }
 
 type PropertyRequest struct {
-	Name    string `json:"name"`
-	Address string `json:"address"`
+	Name    string  `json:"name"`
+	Address string  `json:"address"`
+	Photo   *string `json:"photo,omitempty"`
 }
 
 type PropertyResponse struct {
@@ -37,10 +38,11 @@ type PropertyResponse struct {
 }
 
 type Property struct {
-	ID        int64  `json:"id"`
-	Name      string `json:"name"`
-	Address   string `json:"address"`
-	CreatedAt string `json:"created_at"`
+	ID        int64   `json:"id"`
+	Name      string  `json:"name"`
+	Address   string  `json:"address"`
+	Photo     *string `json:"photo,omitempty"`
+	CreatedAt string  `json:"created_at"`
 }
 
 type UserPropertiesResponse struct {
@@ -73,8 +75,6 @@ type FloorRequest struct {
 	Name              string `json:"name"`
 	Rent             int    `json:"rent"`
 	Tenant           *int64 `json:"tenant,omitempty"`
-	DueRent          int    `json:"due_rent,omitempty"`
-	DueElectricityBill int  `json:"due_electricity_bill,omitempty"`
 	ReceivedMoney    int    `json:"received_money,omitempty"`
 }
 
@@ -102,10 +102,10 @@ type UserIDResponse struct {
 }
 
 type PaymentRequest struct {
-	DueRent          int  `json:"due_rent"`
-	DueElectricityBill int  `json:"due_electricity_bill"`
-	ReceivedMoney    int  `json:"received_money"`
-	FullPayment      bool `json:"full_payment"`
+	Rent          int     `json:"rent"`
+	ReceivedMoney int     `json:"received_money"`
+	FullPayment   bool    `json:"full_payment"`
+	ElectricityBill *int  `json:"electricity_bill,omitempty"`
 }
 
 type PaymentResponse struct {
@@ -148,7 +148,9 @@ type NotificationsResponse struct {
 }
 
 type PaymentNotificationRequest struct {
-	Amount int `json:"amount"`
+	Amount int     `json:"amount"`
+	Month  *int    `json:"month"`
+	PaidElectricityBill *int `json:"paid_electricity_bill,omitempty"`
 }
 
 type AdvancePaymentRequest struct {
@@ -167,6 +169,36 @@ type AdvancePaymentCheckResponse struct {
 	Success     bool   `json:"success"`
 	Message     string `json:"message"`
 	HasPending  bool   `json:"has_pending"`
+}
+
+type PaginationInfo struct {
+	CurrentPage int `json:"current_page"`
+	TotalPages  int `json:"total_pages"`
+	TotalCount  int `json:"total_count"`
+	Limit       int `json:"limit"`
+	HasNextPage bool `json:"has_next_page"`
+	HasPrevPage bool `json:"has_prev_page"`
+}
+
+type PaymentHistoryResponse struct {
+	Success    bool            `json:"success"`
+	Message    string          `json:"message"`
+	Payments   []PaymentHistory `json:"payments"`
+	Pagination PaginationInfo  `json:"pagination"`
+}
+
+type PaymentHistory struct {
+	ID           int64   `json:"id"`
+	NewAddedRent float64 `json:"new_added_rent"`
+	Rent         float64 `json:"rent"`
+	ReceivedMoney float64 `json:"received_money"`
+	DueRent      float64 `json:"due_rent"`
+	FullPayment  bool    `json:"full_payment"`
+	CreatedAt    string  `json:"created_at"`
+	NewAddedElectricityBill *float64 `json:"new_added_electricity_bill,omitempty"`
+	PaidElectricityBill     *float64 `json:"paid_electricity_bill,omitempty"`
+	DueElectricityBill      *float64 `json:"due_electricity_bill,omitempty"`
+	ElectricityBill         *float64 `json:"electricity_bill,omitempty"`
 }
 
 func AddPropertyHandler(w http.ResponseWriter, r *http.Request) {
@@ -222,11 +254,12 @@ func AddPropertyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Insert property into database
 	_, err = db.Exec(
-		`INSERT INTO property (id, name, address, created_at, created_by, updated_at, updated_by)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		`INSERT INTO property (id, name, address, photo, created_at, created_by, updated_at, updated_by)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 		randomID,
 		req.Name,
 		req.Address,
+		req.Photo,
 		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
 		userID,
 		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
@@ -306,7 +339,7 @@ func GetUserPropertiesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query to get all properties for the user
 	query := `
-		SELECT p.id, p.name, p.address, p.created_at 
+		SELECT p.id, p.name, p.address, p.photo, p.created_at 
 		FROM property p
 		INNER JOIN takes_care_of t ON p.id = t.pid
 		WHERE t.uid = ?
@@ -326,9 +359,13 @@ func GetUserPropertiesHandler(w http.ResponseWriter, r *http.Request) {
 	var properties []Property
 	for rows.Next() {
 		var prop Property
-		if err := rows.Scan(&prop.ID, &prop.Name, &prop.Address, &prop.CreatedAt); err != nil {
+		var photo sql.NullString
+		if err := rows.Scan(&prop.ID, &prop.Name, &prop.Address, &photo, &prop.CreatedAt); err != nil {
 			fmt.Printf("Error scanning property row: %v\n", err)
 			continue
+		}
+		if photo.Valid {
+			prop.Photo = &photo.String
 		}
 		properties = append(properties, prop)
 		fmt.Printf("Found property: ID=%d, Name=%s\n", prop.ID, prop.Name)
@@ -407,7 +444,7 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query to get the specific property and verify user has access
 	query := `
-		SELECT p.id, p.name, p.address, p.created_at 
+		SELECT p.id, p.name, p.address, p.photo, p.created_at 
 		FROM property p
 		WHERE p.id = ? AND (
 			EXISTS (
@@ -422,12 +459,16 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("Executing query: %s with propertyID: %d, userID: %d\n", query, propertyID, userID, userID)
 	
 	var prop Property
-	err = db.QueryRow(query, propertyID, userID, userID).Scan(&prop.ID, &prop.Name, &prop.Address, &prop.CreatedAt)
+	var photo sql.NullString
+	err = db.QueryRow(query, propertyID, userID, userID).Scan(&prop.ID, &prop.Name, &prop.Address, &photo, &prop.CreatedAt)
 	if err != nil {
 		fmt.Printf("Error querying property: %v\n", err)
 		w.WriteHeader(http.StatusNotFound)
 		json.NewEncoder(w).Encode(SinglePropertyResponse{false, "Property not found or access denied", Property{}, nil, false})
 		return
+	}
+	if photo.Valid {
+		prop.Photo = &photo.String
 	}
 
 	// Get all floors for this property with tenant names
@@ -1050,13 +1091,12 @@ func UpdateFloorHandler(w http.ResponseWriter, r *http.Request) {
 		// Insert payment record
 		_, err = db.Exec(`
 			INSERT INTO payment (
-				id, due_rent, due_electrictiy_bill, recieved_money, 
+                                id, rent, recieved_money, 
 				full_payment, created_at, created_by, updated_at, updated_by,
 				fid, uid
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			paymentID,
 			0, // due_rent
-			0, // due_electricity_bill
 			0, // received_money
 			true, // full_payment
 			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
@@ -1353,7 +1393,7 @@ func CreatePaymentHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get tenant ID from floor
-	var tenantID int64
+	var tenantID sql.NullInt64
 	err = db.QueryRow(`
 		SELECT tenant 
 		FROM floor 
@@ -1366,25 +1406,22 @@ func CreatePaymentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if tenantID == 0 {
+	if !tenantID.Valid {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(PaymentResponse{false, "No tenant assigned to this floor", 0})
 		return
 	}
-
-	// Calculate total due amount
-	totalDue := req.DueRent + req.DueElectricityBill
 	
 	// Calculate after_receiving_money
-	afterReceivingMoney := req.ReceivedMoney - totalDue
+        afterReceivingMoney := req.ReceivedMoney - req.Rent
 	
 	// Set full_payment based on after_receiving_money
 	fullPayment := afterReceivingMoney == 0
 
-	fmt.Printf("Total due: %d, Received: %d, After receiving: %d, Full payment: %v\n", 
-		totalDue, req.ReceivedMoney, afterReceivingMoney, fullPayment)
+        fmt.Printf("Rent: %d, Received: %d, After receiving: %d, Full payment: %v\n", 
+                req.Rent, req.ReceivedMoney, afterReceivingMoney, fullPayment)
 
-	// Generate random ID for payment
+	// Always create a new payment record
 	paymentID, err := utils.GenerateRandomID()
 	if err != nil {
 		fmt.Printf("Error generating payment ID: %v\n", err)
@@ -1393,16 +1430,15 @@ func CreatePaymentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insert payment record
+	        	// Insert new payment record
 	_, err = db.Exec(`
 		INSERT INTO payment (
-			id, due_rent, due_electrictiy_bill, recieved_money, 
+                        id, rent, recieved_money, 
 			full_payment, created_at, created_by, updated_at, updated_by,
-			fid, uid
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			fid, uid, electricity_bill, paid_bill
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		paymentID,
-		req.DueRent,
-		req.DueElectricityBill,
+                req.Rent,
 		req.ReceivedMoney,
 		fullPayment,
 		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
@@ -1410,7 +1446,9 @@ func CreatePaymentHandler(w http.ResponseWriter, r *http.Request) {
 		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
 		userID,
 		floorID,
-		tenantID,
+		tenantID.Int64,
+		req.ElectricityBill,
+		0, // paid_bill is 0 (NULL) for new payments
 	)
 
 	if err != nil {
@@ -1420,7 +1458,9 @@ func CreatePaymentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Successfully created payment record ID: %d for floor ID: %d and tenant ID: %d\n", paymentID, floorID, tenantID)
+	fmt.Printf("Successfully created new payment record ID: %d for floor ID: %d and tenant ID: %d\n", paymentID, floorID, tenantID.Int64)
+
+	fmt.Printf("Successfully created payment record ID: %d for floor ID: %d and tenant ID: %d\n", paymentID, floorID, tenantID.Int64)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(PaymentResponse{
@@ -1925,20 +1965,19 @@ func SendMonthlyNotifications() {
 		}
 
 		// Get latest payment for this floor
-		var dueRent, dueElectricity float64
+		var rent float64
 		paymentQuery := `
-			SELECT due_rent, due_electricity_bill
+			SELECT rent
 			FROM payment
 			WHERE fid = ?
 			ORDER BY created_at DESC
 			LIMIT 1
 		`
-		err := db.QueryRow(paymentQuery, floorID).Scan(&dueRent, &dueElectricity)
+		err := db.QueryRow(paymentQuery, floorID).Scan(&rent)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// No payment record found, use default values
-				dueRent = 0
-				dueElectricity = 0
+				rent = 0
 			} else {
 			fmt.Printf("Error querying payment: %v\n", err)
 			continue
@@ -1956,8 +1995,8 @@ func SendMonthlyNotifications() {
 
 		// Compose notification message
 		message := fmt.Sprintf(
-			"Monthly rent reminder for %s - %s:\nDue Rent: %.2f tk\nDue Electricity: %.2f tk",
-			propertyName, floorName, dueRent, dueElectricity,
+			"Monthly rent reminder for %s - %s:\nDue Rent: %.2f tk",
+			propertyName, floorName, rent,
 		)
 
 		// Generate notification ID
@@ -2030,20 +2069,19 @@ func TestSendNotifications() {
 		}
 
 		// Get latest payment for this floor
-		var dueRent, dueElectricity float64
+		var rent float64
 		paymentQuery := `
-			SELECT due_rent, due_electricity_bill
+			SELECT rent
 			FROM payment
 			WHERE fid = ?
 			ORDER BY created_at DESC
 			LIMIT 1
 		`
-		err := db.QueryRow(paymentQuery, floorID).Scan(&dueRent, &dueElectricity)
+		err := db.QueryRow(paymentQuery, floorID).Scan(&rent)
 		if err != nil {
 			if err == sql.ErrNoRows {
 				// No payment record found, use default values
-				dueRent = 0
-				dueElectricity = 0
+				rent = 0
 			} else {
 				fmt.Printf("Error querying payment: %v\n", err)
 				continue
@@ -2061,8 +2099,8 @@ func TestSendNotifications() {
 
 		// Compose notification message
 		message := fmt.Sprintf(
-			"TEST: Monthly rent reminder for %s - %s:\nDue Rent: %.2f tk\nDue Electricity: %.2f tk",
-			propertyName, floorName, dueRent, dueElectricity,
+			"TEST: Monthly rent reminder for %s - %s:\nDue Rent: %.2f tk",
+			propertyName, floorName, rent,
 		)
 
 		// Generate notification ID
@@ -2259,26 +2297,93 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 	isAdvancePaymentNotification := strings.HasPrefix(notification.Message, "Advance payment request:")
 	
 	if isPaymentNotification {
-		// Handle payment notification - just update status for now
+		// Handle payment notification
 		if request.Accept {
-			// Payment accepted - skip payment record creation for now
-			fmt.Printf("Payment notification accepted: ID=%d (payment record creation disabled)", notification.ID)
+			// Payment accepted - create payment record
+			fmt.Printf("Payment notification accepted: ID=%d, creating payment record", notification.ID)
 			
-			// Clear any pending notification status from the floor
-			// TODO: Uncomment this after adding status column to floor table
-			// _, err = tx.Exec(`
-			// 	UPDATE floor 
-			// 	SET status = NULL, updated_at = NOW(), updated_by = ?
-			// 	WHERE id = ?
-			// `, userID, notification.FloorID)
+			// Extract amount from the notification message
+			// Message format: "Payment amount: X tk" or "Payment amount: X tk for MonthName"
+			amountRegex := regexp.MustCompile(`Payment amount:\s*([0-9]+)\s*tk`)
 			
-			// if err != nil {
-			// 	fmt.Printf("Error clearing floor status: %v\n", err)
-			// 	http.Error(w, "Failed to clear floor status", http.StatusInternalServerError)
-			// 	return
-			// }
+			amountMatches := amountRegex.FindStringSubmatch(notification.Message)
 			
-			// fmt.Printf("Cleared pending status from floor ID: %d", notification.FloorID)
+			var amount int
+			
+			if len(amountMatches) >= 2 {
+				if parsedAmount, err := strconv.Atoi(amountMatches[1]); err == nil {
+					amount = parsedAmount
+				} else {
+					fmt.Printf("Error parsing amount from message: %v\n", err)
+					http.Error(w, "Failed to parse payment amount", http.StatusInternalServerError)
+					return
+				}
+			} else {
+				fmt.Printf("Could not extract amount from message: %s\n", notification.Message)
+				http.Error(w, "Failed to extract payment amount from message", http.StatusInternalServerError)
+				return
+			}
+			
+			// Extract electricity bill from the notification message if present
+			// Message format: "Payment amount: X tk, Paid electricity bill: Y tk"
+			electricityBillRegex := regexp.MustCompile(`Paid electricity bill:\s*([0-9]+)\s*tk`)
+			electricityBillMatches := electricityBillRegex.FindStringSubmatch(notification.Message)
+			
+			var electricityBill *int
+			if len(electricityBillMatches) >= 2 {
+				if parsedElectricityBill, err := strconv.Atoi(electricityBillMatches[1]); err == nil {
+					electricityBill = &parsedElectricityBill
+					fmt.Printf("Extracted electricity bill: %d tk", parsedElectricityBill)
+				}
+			}
+			
+			// Get tenant ID from floor table
+			var tenantID int64
+			err = tx.QueryRow("SELECT tenant FROM floor WHERE id = ?", notification.FloorID).Scan(&tenantID)
+			if err != nil {
+				fmt.Printf("Error getting tenant ID: %v\n", err)
+				http.Error(w, "Failed to get tenant information", http.StatusInternalServerError)
+				return
+			}
+			
+			// Generate payment ID
+			paymentID, err := utils.GenerateRandomID()
+			if err != nil {
+				fmt.Printf("Error generating payment ID: %v\n", err)
+				http.Error(w, "Failed to generate payment ID", http.StatusInternalServerError)
+				return
+			}
+			
+			// Create payment record according to requirements:
+			// rent = 0, received_money = amount from message, electricity_bill = 0, paid_bill = electricity bill from message
+			_, err = tx.Exec(`
+				INSERT INTO payment (
+					id, rent, recieved_money, full_payment, created_at, created_by, updated_at, updated_by, 
+					fid, uid, electricity_bill, paid_bill
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`,
+				paymentID,
+				0, // rent = 0 (as specified)
+				amount, // received_money = amount from message
+				true, // full_payment = true since it's accepted
+				time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
+				userID,
+				time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
+				userID,
+				notification.FloorID, // fid from notification
+				tenantID, // uid from floor.tenant
+				0, // electricity_bill = 0
+				electricityBill, // paid_bill = electricity bill from message
+			)
+			
+			if err != nil {
+				fmt.Printf("Error creating payment record: %v\n", err)
+				http.Error(w, "Failed to create payment record", http.StatusInternalServerError)
+				return
+			}
+			
+			fmt.Printf("Created payment record: ID=%d, Floor=%d, Tenant=%d, Amount=%d, ElectricityBill=%v", 
+				paymentID, notification.FloorID, tenantID, amount, electricityBill)
 		}
 		// If rejected, just update the notification status (already done above)
 		
@@ -2501,7 +2606,7 @@ func GetUserTenantPropertiesHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query to get all properties where the user is a tenant
 	query := `
-		SELECT DISTINCT p.id, p.name, p.address, p.created_at 
+		SELECT DISTINCT p.id, p.name, p.address, p.photo, p.created_at 
 		FROM property p
 		INNER JOIN floor f ON p.id = f.pid
 		WHERE f.tenant = ?
@@ -2521,9 +2626,13 @@ func GetUserTenantPropertiesHandler(w http.ResponseWriter, r *http.Request) {
 	var properties []Property
 	for rows.Next() {
 		var prop Property
-		if err := rows.Scan(&prop.ID, &prop.Name, &prop.Address, &prop.CreatedAt); err != nil {
+		var photo sql.NullString
+		if err := rows.Scan(&prop.ID, &prop.Name, &prop.Address, &photo, &prop.CreatedAt); err != nil {
 			fmt.Printf("Error scanning property row: %v\n", err)
 			continue
+		}
+		if photo.Valid {
+			prop.Photo = &photo.String
 		}
 		properties = append(properties, prop)
 		fmt.Printf("Found property: ID=%d, Name=%s\n", prop.ID, prop.Name)
@@ -2820,7 +2929,20 @@ func SendPaymentNotificationHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compose message with structured format
-	message := fmt.Sprintf("Payment amount: %d tk", req.Amount)
+	var message string
+	if req.Month != nil {
+		monthNames := []string{"January", "February", "March", "April", "May", "June",
+			"July", "August", "September", "October", "November", "December"}
+		monthName := monthNames[*req.Month-1]
+		message = fmt.Sprintf("Payment amount: %d tk for %s", req.Amount, monthName)
+	} else {
+		message = fmt.Sprintf("Payment amount: %d tk", req.Amount)
+	}
+	
+	// Add electricity bill info to message if provided
+	if req.PaidElectricityBill != nil {
+		message += fmt.Sprintf(", Paid electricity bill: %d tk", *req.PaidElectricityBill)
+	}
 
 	// Generate notification ID
 	notificationID, err := utils.GenerateRandomID()
@@ -2862,6 +2984,9 @@ func SendPaymentNotificationHandler(w http.ResponseWriter, r *http.Request) {
 	// 	log.Printf("Updated floor ID %d status to 'pending'", floorID)
 	// }
 
+	// Note: Payment records are now only created when the manager accepts the notification
+	// This prevents duplicate payment records from being created
+
 	log.Printf("Successfully sent payment notification: ID=%d, from user=%d to manager=%d", notificationID, userID, managerID)
 
 	w.WriteHeader(http.StatusOK)
@@ -2872,6 +2997,170 @@ func SendPaymentNotificationHandler(w http.ResponseWriter, r *http.Request) {
 func HandlePaymentNotificationAction(w http.ResponseWriter, r *http.Request) {
 	// This function is no longer needed as payment notifications are handled in HandleTenantRequestAction
 	http.Error(w, "Use /notifications/action endpoint instead", http.StatusMovedPermanently)
+}
+
+// GetPaymentDetailsHandler handles GET requests to get payment details for a floor
+func GetPaymentDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Get Payment Details Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Method not allowed",
+		})
+		return
+	}
+
+	// Get user ID from session
+	userID := getUserIDFromContext(r)
+	if userID == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "User not authenticated",
+		})
+		return
+	}
+
+	// Extract floor ID from URL using Gorilla Mux variables
+	vars := mux.Vars(r)
+	floorID, err := strconv.ParseInt(vars["floor_id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Invalid floor ID",
+		})
+		return
+	}
+
+	db, err := config.GetDBConnection()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Database connection error",
+		})
+		return
+	}
+
+	// Get the tenant ID for this floor
+	var tenantID sql.NullInt64
+	err = db.QueryRow(`SELECT tenant FROM floor WHERE id = ?`, floorID).Scan(&tenantID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Floor not found",
+		})
+		return
+	}
+
+	// If no tenant is assigned, return 0 outstanding rent
+	if !tenantID.Valid {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Payment details retrieved successfully",
+			"payment": map[string]interface{}{
+				"rent":           0,
+				"received_money": 0,
+				"full_payment":   false,
+			},
+		})
+		return
+	}
+
+	// Calculate total outstanding rent: sum(rent - received_money) for all payments of this floor and tenant
+	var totalOutstandingRent sql.NullFloat64
+	err = db.QueryRow(`
+		SELECT COALESCE(SUM(rent - recieved_money), 0) as total_outstanding
+		FROM payment
+		WHERE fid = ? AND uid = ?
+	`, floorID, tenantID.Int64).Scan(&totalOutstandingRent)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Error calculating outstanding rent",
+		})
+		return
+	}
+
+	// Get the latest payment record for this floor (for other details)
+	var rent, receivedMoney sql.NullInt64
+	var fullPayment bool
+	var paymentID int64
+	var createdAt string
+	err = db.QueryRow(`
+		SELECT id, rent, recieved_money, full_payment, created_at
+		FROM payment
+		WHERE fid = ?
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, floorID).Scan(&paymentID, &rent, &receivedMoney, &fullPayment, &createdAt)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// No payment record found, return default values
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"message": "Payment details retrieved successfully",
+				"payment": map[string]interface{}{
+					"rent":           0,
+					"received_money": 0,
+					"full_payment":   false,
+				},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Error retrieving payment details",
+		})
+		return
+	}
+
+			// Convert NULL values to 0 if they are NULL
+		var rentValue, receivedMoneyValue int64
+		if rent.Valid {
+			rentValue = rent.Int64
+		} else {
+			rentValue = 0
+		}
+		if receivedMoney.Valid {
+			receivedMoneyValue = receivedMoney.Int64
+		} else {
+			receivedMoneyValue = 0
+		}
+
+		// Use the calculated total outstanding rent
+		totalOutstanding := int64(0)
+		if totalOutstandingRent.Valid {
+			totalOutstanding = int64(totalOutstandingRent.Float64)
+		}
+
+		fmt.Printf("Payment details for floor %d: Total Outstanding=%d, Latest Rent=%d, Received=%d, Created=%s\n",
+				floorID, totalOutstanding, rentValue, receivedMoneyValue, createdAt)
+
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": true,
+			"message": "Payment details retrieved successfully",
+			"payment": map[string]interface{}{
+				"rent":          totalOutstanding, // Use total outstanding rent instead of latest payment rent
+				"received_money": receivedMoneyValue,
+				"full_payment":   fullPayment,
+			},
+		})
 }
 
 // GetPendingPaymentNotificationsHandler handles GET requests to get pending payment notifications for a floor
@@ -3956,4 +4245,240 @@ func CancelAdvancePaymentHandler(w http.ResponseWriter, r *http.Request) {
 		Message:   "Advance payment request cancelled successfully",
 		AdvanceID: 0,
 	})
+}
+
+func GetPaymentHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Get Payment History Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Method not allowed",
+		})
+		return
+	}
+
+	// Get user ID from context
+	userID := getUserIDFromContext(r)
+	if userID == 0 {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Unauthorized",
+		})
+		return
+	}
+
+	fmt.Printf("User authenticated: ID=%d\n", userID)
+
+	// Parse URL to get floor ID
+	urlParts := strings.Split(r.URL.Path, "/")
+	fmt.Printf("URL parts: %v\n", urlParts)
+	
+	if len(urlParts) < 4 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Invalid URL format",
+		})
+		return
+	}
+
+	floorID, err := strconv.ParseInt(urlParts[2], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Invalid floor ID",
+		})
+		return
+	}
+
+	fmt.Printf("Floor ID: %d\n", floorID)
+
+	// Parse pagination parameters
+	page := 1
+	limit := 25
+	
+	if pageStr := r.URL.Query().Get("page"); pageStr != "" {
+		if parsedPage, err := strconv.Atoi(pageStr); err == nil && parsedPage > 0 {
+			page = parsedPage
+		}
+	}
+	
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if parsedLimit, err := strconv.Atoi(limitStr); err == nil && parsedLimit > 0 && parsedLimit <= 100 {
+			limit = parsedLimit
+		}
+	}
+	
+	offset := (page - 1) * limit
+
+	// Get database connection
+	db, err := config.GetDBConnection()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Database connection error",
+		})
+		return
+	}
+
+	// Get the tenant ID for this floor first
+	var tenantID sql.NullInt64
+	err = db.QueryRow("SELECT tenant FROM floor WHERE id = ?", floorID).Scan(&tenantID)
+	if err != nil {
+		fmt.Printf("Error getting tenant for floor: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Error getting tenant information",
+		})
+		return
+	}
+
+	if !tenantID.Valid {
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(PaymentHistoryResponse{
+			Success:  true,
+			Message:  "No tenant assigned to this floor",
+			Payments: []PaymentHistory{},
+		})
+		return
+	}
+
+	// Get payment history for the floor with calculated fields and pagination
+	query := `
+		SELECT 
+			p.id,
+			p.rent as new_added_rent,
+			p.recieved_money,
+			p.full_payment,
+			p.created_at,
+			p.electricity_bill as new_added_electricity_bill,
+			p.paid_bill as paid_electricity_bill,
+			COALESCE((
+				SELECT SUM(p2.rent - p2.recieved_money)
+				FROM payment p2
+				WHERE p2.fid = p.fid AND p2.uid = p.uid AND p2.created_at < p.created_at
+			), 0) as rent,
+			COALESCE((
+				SELECT SUM(p3.rent - p3.recieved_money)
+				FROM payment p3
+				WHERE p3.fid = p.fid AND p3.uid = p.uid AND p3.created_at <= p.created_at
+			), 0) as due_rent,
+			COALESCE((
+				SELECT SUM(COALESCE(p4.electricity_bill, 0) - COALESCE(p4.paid_bill, 0))
+				FROM payment p4
+				WHERE p4.fid = p.fid AND p4.uid = p.uid AND p4.created_at <= p.created_at
+			), 0) as due_electricity_bill,
+			COALESCE((
+				SELECT SUM(COALESCE(p5.electricity_bill, 0) - COALESCE(p5.paid_bill, 0))
+				FROM payment p5
+				WHERE p5.fid = p.fid AND p5.uid = p.uid AND p5.created_at < p.created_at
+			), 0) as electricity_bill
+		FROM payment p
+		WHERE p.fid = ? AND p.uid = ?
+		ORDER BY p.created_at DESC
+		LIMIT ? OFFSET ?
+	`
+	fmt.Printf("Executing query: %s with floorID: %d, tenantID: %d, limit: %d, offset: %d\n", query, floorID, tenantID.Int64, limit, offset)
+	
+	rows, err := db.Query(query, floorID, tenantID.Int64, limit, offset)
+	if err != nil {
+		fmt.Printf("Error querying payment history: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success": false,
+			"message": "Error querying payment history",
+		})
+		return
+	}
+	defer rows.Close()
+
+	var payments []PaymentHistory
+	paymentCount := 0
+	for rows.Next() {
+		var payment PaymentHistory
+		var createdAt time.Time
+		var newAddedRent, rent, dueRent, dueElectricityBill, electricityBill float64
+		var newAddedElectricityBill, paidElectricityBill sql.NullFloat64
+		err := rows.Scan(&payment.ID, &newAddedRent, &payment.ReceivedMoney, &payment.FullPayment, &createdAt, &newAddedElectricityBill, &paidElectricityBill, &rent, &dueRent, &dueElectricityBill, &electricityBill)
+		if err != nil {
+			fmt.Printf("Error scanning payment: %v\n", err)
+			continue
+		}
+		
+		// Set new_added_rent (the actual rent amount from payment table)
+		payment.NewAddedRent = newAddedRent
+		
+		// Set rent (sum of previous outstanding amounts)
+		payment.Rent = rent
+		
+		// Set due_rent (sum after this row was inserted)
+		payment.DueRent = dueRent
+		
+		// Set electricity bill fields
+		if newAddedElectricityBill.Valid {
+			payment.NewAddedElectricityBill = &newAddedElectricityBill.Float64
+		}
+		if paidElectricityBill.Valid {
+			payment.PaidElectricityBill = &paidElectricityBill.Float64
+		}
+		payment.DueElectricityBill = &dueElectricityBill
+		payment.ElectricityBill = &electricityBill
+		
+		payment.CreatedAt = createdAt.Format("2006-01-02T15:04:05Z")
+		payments = append(payments, payment)
+		paymentCount++
+		
+		fmt.Printf("Found payment: ID=%d, NewAddedRent=%.2f, Rent(Previous Outstanding)=%.2f, ReceivedMoney=%.2f, DueRent=%.2f, ElectricityBill=%.2f, FullPayment=%v\n", 
+			payment.ID, payment.NewAddedRent, payment.Rent, payment.ReceivedMoney, payment.DueRent, *payment.ElectricityBill, payment.FullPayment)
+	}
+
+	fmt.Printf("Total payments found: %d\n", paymentCount)
+
+	// Get total count for pagination
+	var totalCount int
+	err = db.QueryRow(`
+		SELECT COUNT(*)
+		FROM payment p
+		WHERE p.fid = ? AND p.uid = ?
+	`, floorID, tenantID.Int64).Scan(&totalCount)
+	
+	if err != nil {
+		fmt.Printf("Error getting total count: %v\n", err)
+		totalCount = paymentCount
+	}
+
+	// Calculate pagination metadata
+	totalPages := (totalCount + limit - 1) / limit
+	hasNextPage := page < totalPages
+	hasPrevPage := page > 1
+
+	// Return success response
+	response := PaymentHistoryResponse{
+		Success:  true,
+		Message:  "Payment history retrieved successfully",
+		Payments: payments,
+		Pagination: PaginationInfo{
+			CurrentPage:  page,
+			TotalPages:   totalPages,
+			TotalCount:   totalCount,
+			Limit:        limit,
+			HasNextPage:  hasNextPage,
+			HasPrevPage:  hasPrevPage,
+		},
+	}
+	
+	fmt.Printf("Sending response: %+v\n", response)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }

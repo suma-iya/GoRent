@@ -38,14 +38,16 @@ class _LoginScreenState extends State<LoginScreen> {
       // Format phone number as +880 XXXX-XXXXXX
       final phoneNumber = '+880 ${_phoneController.text.substring(0, 4)}-${_phoneController.text.substring(4)}';
       
-      final success = await _apiService.login(
+      final loginResult = await _apiService.login(
         phoneNumber,
         _passwordController.text,
       );
 
-      if (success && mounted) {
-        // Set the current user ID after login (replace 6366790 with actual userId from backend)
-        await _apiService.setCurrentUserId(6366790);
+      if (loginResult != null && loginResult['success'] == true && mounted) {
+        // Set the current user ID after login using the actual userId from backend
+        final userId = loginResult['user_id'];
+        await _apiService.setCurrentUserId(userId);
+        print('Set current user ID to: $userId');
         // Navigate to properties screen on success
         Navigator.pushAndRemoveUntil(
           context,

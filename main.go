@@ -65,6 +65,8 @@ func main() {
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/tenant", handlers.AddTenantToFloorHandler).Methods("POST")
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/tenant", handlers.RemoveTenantHandler).Methods("DELETE")
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/payment", handlers.CreatePaymentHandler).Methods("POST")
+	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/payment-history", handlers.GetPaymentHistoryHandler).Methods("GET")
+	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/payment", handlers.GetPaymentDetailsHandler).Methods("GET")
 	managerRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-payment", handlers.CreateAdvancePaymentRequestHandler).Methods("POST")
 
 	// Advance payment check and cancel routes

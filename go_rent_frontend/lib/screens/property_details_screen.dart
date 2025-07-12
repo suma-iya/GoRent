@@ -5,11 +5,13 @@ import '../models/floor.dart';
 import '../services/api_service.dart';
 import 'notifications_screen.dart';
 import 'pending_payment_notifications_screen.dart';
+import 'payment_screen.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final Property property;
+  final bool? isManagedProperty; // Add this parameter
 
-  const PropertyDetailsScreen({Key? key, required this.property}) : super(key: key);
+  const PropertyDetailsScreen({Key? key, required this.property, this.isManagedProperty}) : super(key: key);
 
   @override
   _PropertyDetailsScreenState createState() => _PropertyDetailsScreenState();
@@ -34,9 +36,19 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   
   Color get _themeColor => _isManager ? _managedColor : _tenantColor;
 
+  String _getMonthName(int month) {
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return months[month - 1];
+  }
+
   @override
   void initState() {
     super.initState();
+    // Initialize with passed value to avoid color flash
+    _isManager = widget.isManagedProperty ?? false;
     _apiService.loadCurrentUserId().then((_) {
       setState(() {}); // Rebuild to update UI with loaded userId
     });
@@ -523,17 +535,34 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   Future<void> _showSendPaymentDialog(Floor floor) async {
     final amountController = TextEditingController();
+    final electricityBillController = TextEditingController();
+    
     return showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
         title: const Text('Send Payment Notification'),
-        content: TextField(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
           controller: amountController,
           decoration: const InputDecoration(
-            labelText: 'Amount',
+            labelText: 'Payment Amount',
             hintText: 'Enter payment amount',
           ),
           keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: electricityBillController,
+                decoration: const InputDecoration(
+                  labelText: 'Electricity Bill (Optional)',
+                  hintText: 'Enter electricity bill amount to pay',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+            ],
         ),
         actions: [
           TextButton(
@@ -549,11 +578,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 );
                 return;
               }
+              
+              // Parse electricity bill if provided
+              int? electricityBill;
+              if (electricityBillController.text.isNotEmpty) {
+                electricityBill = int.tryParse(electricityBillController.text);
+                if (electricityBill == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please enter a valid electricity bill amount')),
+                  );
+                  return;
+                }
+              }
+              
               try {
                 await _apiService.sendPaymentNotification(
                   propertyId: widget.property.id,
                   floorId: floor.id,
                   amount: amount,
+                  electricityBill: electricityBill,
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -567,8 +610,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               }
             },
             child: const Text('Send'),
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -980,14 +1024,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(20),
                                 onTap: () {
-                                  // Only navigate if it's a pending floor AND the current user is the tenant
-                                  // AND we're not showing the "Tap to view" text (which has its own tap handler)
-                                  if (actualStatus == 'pending' &&
-                                      floor.tenant != null &&
-                                      floor.tenant == _apiService.currentUserId &&
-                                      actualStatus == 'pending') {
-                                    // Don't navigate here - let the "Tap to view" handle it
-                                  }
+                                  // Navigate to payment screen when floor is clicked
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PaymentScreen(
+                                        property: widget.property,
+                                        floor: floor,
+                                        themeColor: _themeColor,
+                                      ),
+                                    ),
+                                  );
                                 },
                             child: Column(
                               children: [
@@ -1183,7 +1230,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                 ),
                                         ],
                                       ),
-                                    ),
+                                ),
                                     // Payment button for tenants
                                 if (floor.tenant != null && floor.tenant == _apiService.currentUserId)
                                   Padding(
