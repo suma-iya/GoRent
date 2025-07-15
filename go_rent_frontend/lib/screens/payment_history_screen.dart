@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../models/property.dart';
 import '../models/floor.dart';
 import '../services/api_service.dart';
+import '../utils/app_localizations.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {
   final Property property;
@@ -23,6 +24,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   bool _isLoading = true;
   String? _error;
   List<Map<String, dynamic>> _payments = [];
+  Map<String, dynamic> _pagination = {};
 
   // Modern color schemes - Tenant theme (green/emerald)
   final Color _primaryColor = const Color(0xFF10B981); // Modern emerald
@@ -44,9 +46,10 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     });
 
     try {
-      final payments = await _apiService.getPaymentHistory(widget.floor.id);
+      final response = await _apiService.getPaymentHistory(widget.floor.id);
       setState(() {
-        _payments = payments;
+        _payments = List<Map<String, dynamic>>.from(response['payments'] ?? []);
+        _pagination = Map<String, dynamic>.from(response['pagination'] ?? {});
         _isLoading = false;
       });
     } catch (e) {
@@ -64,8 +67,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Payment History',
+        title: Text(
+          AppLocalizations.of(context).paymentHistory,
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 20,
@@ -125,7 +128,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'Something went wrong',
+                          AppLocalizations.of(context).somethingWentWrong,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
@@ -145,7 +148,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                         ElevatedButton.icon(
                           onPressed: _loadPaymentHistory,
                           icon: const Icon(Icons.refresh_rounded),
-                          label: const Text('Try Again'),
+                          label: Text(AppLocalizations.of(context).tryAgain),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primaryColor,
                             foregroundColor: Colors.white,
@@ -194,7 +197,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              'No Payment History',
+                              AppLocalizations.of(context).paymentHistory,
                               style: TextStyle(
                                 fontSize: 24,
                                 fontWeight: FontWeight.w700,
@@ -203,7 +206,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'No payment records found for this floor',
+                              AppLocalizations.of(context).noFloorsAddedYet,
                               style: TextStyle(
                                 fontSize: 16,
                                 color: _textSecondary,
@@ -239,7 +242,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Payment History',
+                                  AppLocalizations.of(context).paymentHistory,
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,
@@ -248,7 +251,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  '${widget.property.name} - ${widget.floor.name}',
+                                  '${widget.property.name} - ${AppLocalizations.of(context).floorName}: ${widget.floor.name}',
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: _textSecondary,
@@ -264,7 +267,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: Text(
-                                        '${_payments.length} records',
+                                        '${_payments.length} ${AppLocalizations.of(context).records}',
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
@@ -332,7 +335,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                                 crossAxisAlignment: CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    month.isNotEmpty ? month : 'No Month',
+                                                    month.isNotEmpty ? month : AppLocalizations.of(context).noMonth,
                                                     style: TextStyle(
                                                       fontSize: 16,
                                                       fontWeight: FontWeight.w700,
@@ -340,7 +343,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                                     ),
                                                   ),
                                                   Text(
-                                                    'Payment Record',
+                                                    AppLocalizations.of(context).paymentRecord,
                                                     style: TextStyle(
                                                       fontSize: 14,
                                                       color: _textSecondary,
@@ -360,8 +363,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                         children: [
                                           Expanded(
                                             child: _buildPaymentDetail(
-                                              'Due Rent',
-                                              '${dueRent.toStringAsFixed(2)} tk',
+                                              AppLocalizations.of(context).dueRent,
+                                              '${dueRent.toStringAsFixed(2)} ${AppLocalizations.of(context).tk}',
                                               Colors.red.shade600,
                                               Icons.money_off_rounded,
                                             ),
@@ -369,8 +372,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                           const SizedBox(width: 16),
                                           Expanded(
                                             child: _buildPaymentDetail(
-                                              'Received',
-                                              '${receivedMoney.toStringAsFixed(2)} tk',
+                                              AppLocalizations.of(context).receivedMoney,
+                                              '${receivedMoney.toStringAsFixed(2)} ${AppLocalizations.of(context).tk}',
                                               Colors.green.shade600,
                                               Icons.money_rounded,
                                             ),

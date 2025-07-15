@@ -481,11 +481,13 @@ func GetPropertyByIDHandler(w http.ResponseWriter, r *http.Request) {
 		       EXISTS(
 		           SELECT 1 FROM notification n 
 		           WHERE n.fid = f.id AND n.status = 'pending'
+		           AND n.message NOT LIKE 'Advance payment request:%'
 		       ) as has_pending_request,
 		       (
 		           SELECT n.id 
 		           FROM notification n 
 		           WHERE n.fid = f.id AND n.status = 'pending'
+		           AND n.message NOT LIKE 'Advance payment request:%'
 		           LIMIT 1
 		       ) as notification_id,
 		       EXISTS(
@@ -820,7 +822,8 @@ func GetFloorsHandler(w http.ResponseWriter, r *http.Request) {
 		       END as tenant_name,
 		       EXISTS(
 		           SELECT 1 FROM notification n 
-		           WHERE n.fid = f.id AND n.status = 'pending'
+		           WHERE n.fid = f.id AND n.status = 'pending' 
+		           AND n.message NOT LIKE 'Advance payment request:%'
 		       ) as has_pending_request,
 		       EXISTS(
 		           SELECT 1 FROM advance a 
@@ -1575,12 +1578,13 @@ func SendTenantRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if there's already a pending notification for this floor
+	// Check if there's already a pending tenant request for this floor (excluding advance payment requests)
 	var pendingExists bool
 	err = db.QueryRow(`
 		SELECT EXISTS(
 			SELECT 1 FROM notification 
 			WHERE fid = ? AND status = 'pending'
+			AND message NOT LIKE 'Advance payment request:%'
 		)`, floorID).Scan(&pendingExists)
 	
 	if err != nil {
@@ -1875,12 +1879,13 @@ func DeleteNotificationHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Check if this was a payment notification and clear floor status if no more pending notifications
 	if strings.HasPrefix(message, "Payment amount:") {
-		// Check if there are any remaining pending notifications for this floor
+		// Check if there are any remaining pending notifications for this floor (excluding advance payment requests)
 		var remainingNotifications int
 		err = tx.QueryRow(`
 			SELECT COUNT(*) 
 			FROM notification 
-			WHERE fid = ? AND status = 'pending'`, floorID).Scan(&remainingNotifications)
+			WHERE fid = ? AND status = 'pending' 
+			AND message NOT LIKE 'Advance payment request:%'`, floorID).Scan(&remainingNotifications)
 		
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)

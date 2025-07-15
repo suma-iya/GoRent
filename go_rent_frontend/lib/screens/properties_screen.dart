@@ -4,8 +4,11 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
+import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../services/api_service.dart';
+import '../services/localization_service.dart';
+import '../utils/app_localizations.dart';
 import 'property_details_screen.dart';
 import 'notifications_screen.dart';
 
@@ -25,6 +28,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
   List<Property> _managedProperties = [];
   List<Property> _tenantProperties = [];
   int _unreadNotifications = 0;
+  String _selectedLanguage = 'English'; // Default language
 
   late AnimationController _fabAnimationController;
   late AnimationController _listAnimationController;
@@ -106,7 +110,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
     } catch (e) {
       print('Error loading properties: $e');
       setState(() {
-        _error = 'Failed to load properties. Please try again.';
+        _error = AppLocalizations.of(context).failedToLoadProperties;
         _isLoading = false;
         _managedProperties = [];
         _tenantProperties = [];
@@ -194,8 +198,8 @@ class _PropertiesScreenState extends State<PropertiesScreen>
               ),
               child: SingleChildScrollView(
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+          mainAxisSize: MainAxisSize.min,
+          children: [
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -210,7 +214,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Add New Property',
+                      AppLocalizations.of(context).addProperty,
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -219,7 +223,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Create a new property listing to manage',
+                      AppLocalizations.of(context).addProperty,
                       style: TextStyle(
                         fontSize: 14,
                         color: _textSecondary,
@@ -232,7 +236,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Property Photo (Optional)',
+                          AppLocalizations.of(context).propertyPhoto,
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
@@ -270,7 +274,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                                     setDialogState(() {});
                                   },
                                   icon: const Icon(Icons.delete_rounded),
-                                  label: const Text('Remove'),
+                                  label: Text(AppLocalizations.of(context).remove),
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.red.shade600,
                                   ),
@@ -280,14 +284,14 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                                 child: TextButton.icon(
                                   onPressed: pickImage,
                                   icon: const Icon(Icons.edit_rounded),
-                                  label: const Text('Change'),
+                                  label: Text(AppLocalizations.of(context).change),
                                   style: TextButton.styleFrom(
                                     foregroundColor: _managedColor,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+            ),
+          ],
+        ),
                         ] else ...[
                           Container(
                             width: double.infinity,
@@ -311,7 +315,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Add a photo of your property',
+                                  AppLocalizations.of(context).addPhotoMessage,
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: _textSecondary,
@@ -327,7 +331,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                                 child: OutlinedButton.icon(
                                   onPressed: takePhoto,
                                   icon: const Icon(Icons.camera_alt_rounded),
-                                  label: const Text('Camera'),
+                                  label: Text(AppLocalizations.of(context).camera),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: _managedColor,
                                     side: BorderSide(color: _managedColor),
@@ -340,16 +344,16 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                                 child: OutlinedButton.icon(
                                   onPressed: pickImage,
                                   icon: const Icon(Icons.photo_library_rounded),
-                                  label: const Text('Gallery'),
+                                  label: Text(AppLocalizations.of(context).gallery),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: _managedColor,
                                     side: BorderSide(color: _managedColor),
                                     padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
+            ),
+          ],
+        ),
                         ],
                       ],
                     ),
@@ -374,7 +378,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                       children: [
                         Expanded(
                           child: TextButton(
-                            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context),
                             style: TextButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
@@ -382,7 +386,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                               ),
                             ),
                             child: Text(
-                              'Cancel',
+                              AppLocalizations.of(context).cancel,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -403,32 +407,32 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                               ),
                               elevation: 0,
                             ),
-                            onPressed: () async {
-                              if (nameController.text.isEmpty || addressController.text.isEmpty) {
-                                _showSnackBar('Please fill all required fields', isError: true);
-                                return;
-                              }
+            onPressed: () async {
+              if (nameController.text.isEmpty || addressController.text.isEmpty) {
+                _showSnackBar(AppLocalizations.of(context).fillRequiredFields, isError: true);
+                return;
+              }
 
-                              try {
-                                final success = await _apiService.addProperty(
-                                  nameController.text,
-                                  addressController.text,
+              try {
+                final success = await _apiService.addProperty(
+                  nameController.text,
+                  addressController.text,
                                   photoBase64: imageBase64,
-                                );
+                );
 
-                                if (success) {
-                                  Navigator.pop(context);
-                                  _loadProperties();
-                                  _showSnackBar('Property added successfully');
-                                } else {
-                                  throw Exception('Failed to add property');
-                                }
-                              } catch (e) {
+                if (success) {
+                  Navigator.pop(context);
+                  _loadProperties();
+                  _showSnackBar(AppLocalizations.of(context).addPropertySuccess);
+                } else {
+                  throw Exception(AppLocalizations.of(context).failedToAddProperty);
+                }
+              } catch (e) {
                                 _showSnackBar('Error: $e', isError: true);
                               }
                             },
-                            child: const Text(
-                              'Add Property',
+                            child: Text(
+                              AppLocalizations.of(context).addProperty,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
@@ -457,7 +461,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+          children: [
         Text(
           label,
           style: TextStyle(
@@ -507,15 +511,108 @@ class _PropertiesScreenState extends State<PropertiesScreen>
     );
   }
 
+  Future<void> _showLanguageDialog() async {
+    HapticFeedback.lightImpact();
+    final currentLang = Provider.of<LocalizationService>(context, listen: false).currentLocale.languageCode;
+    await showDialog<String>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _cardColor,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                spreadRadius: 0,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+      padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _managedColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.language_rounded,
+                  color: _managedColor,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                AppLocalizations.of(context).selectLanguage,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: _textPrimary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: Radio<String>(
+                  value: 'en',
+                  groupValue: currentLang,
+                  onChanged: (value) {
+                    Provider.of<LocalizationService>(context, listen: false).changeLanguage('en');
+                    Navigator.pop(context);
+                  },
+                  activeColor: _managedColor,
+                ),
+                title: const Text('English'),
+                trailing: currentLang == 'en'
+                    ? Icon(Icons.check_rounded, color: _managedColor)
+                    : null,
+            onTap: () {
+                  Provider.of<LocalizationService>(context, listen: false).changeLanguage('en');
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: Radio<String>(
+                  value: 'bn',
+                  groupValue: currentLang,
+                  onChanged: (value) {
+                    Provider.of<LocalizationService>(context, listen: false).changeLanguage('bn');
+                    Navigator.pop(context);
+                  },
+                  activeColor: _managedColor,
+                ),
+                title: const Text('বাংলা'),
+                trailing: currentLang == 'bn'
+                    ? Icon(Icons.check_rounded, color: _managedColor)
+                    : null,
+                onTap: () {
+                  Provider.of<LocalizationService>(context, listen: false).changeLanguage('bn');
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildManagedPropertiesFragment() {
-    return _buildPropertiesFragment(
-      properties: _managedProperties,
-      themeColor: _managedColor,
-      isManaged: true,
-      emptyIcon: Icons.business_rounded,
-      emptyTitle: 'No managed properties yet',
-      emptySubtitle: 'Add your first property to get started',
-      loadingText: 'Loading managed properties...',
+    return       _buildPropertiesFragment(
+        properties: _managedProperties,
+        themeColor: _managedColor,
+        isManaged: true,
+        emptyIcon: Icons.business_rounded,
+        emptyTitle: AppLocalizations.of(context).noManagedProperties,
+        emptySubtitle: AppLocalizations.of(context).noManagedPropertiesSubtitle,
+        loadingText: AppLocalizations.of(context).loadingManagedProperties,
     );
   }
 
@@ -525,9 +622,9 @@ class _PropertiesScreenState extends State<PropertiesScreen>
       themeColor: _tenantColor,
       isManaged: false,
       emptyIcon: Icons.person_rounded,
-      emptyTitle: 'No tenant properties found',
-      emptySubtitle: 'You\'ll see properties where you\'re a tenant here',
-      loadingText: 'Loading tenant properties...',
+      emptyTitle: AppLocalizations.of(context).noTenantProperties,
+      emptySubtitle: AppLocalizations.of(context).noTenantPropertiesSubtitle,
+      loadingText: AppLocalizations.of(context).loadingTenantProperties,
     );
   }
 
@@ -609,10 +706,10 @@ class _PropertiesScreenState extends State<PropertiesScreen>
   }
 
   Widget _buildLoadingState(Color themeColor, String text) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -672,7 +769,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
             ),
             const SizedBox(height: 20),
             Text(
-              'Something went wrong',
+              AppLocalizations.of(context).somethingWentWrong,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
@@ -692,7 +789,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
             ElevatedButton.icon(
               onPressed: _loadProperties,
               icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Try Again'),
+              label: Text(AppLocalizations.of(context).tryAgain),
               style: ElevatedButton.styleFrom(
                 backgroundColor: themeColor,
                 foregroundColor: Colors.white,
@@ -770,7 +867,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
               ElevatedButton.icon(
                 onPressed: _showAddPropertyDialog,
                 icon: const Icon(Icons.add_rounded),
-                label: const Text('Add Property'),
+                label: Text(AppLocalizations.of(context).addProperty),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: themeColor,
                   foregroundColor: Colors.white,
@@ -825,7 +922,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
           child: Container(
             padding: const EdgeInsets.all(20),
             child: Row(
-              children: [
+            children: [
                 Hero(
                   tag: 'property_${property.id}',
                   child: Container(
@@ -860,9 +957,9 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                                     isManaged ? Icons.business_rounded : Icons.person_rounded,
                                     color: themeColor,
                                     size: 28,
-                                  ),
-                                );
-                              },
+          ),
+        );
+      },
                             )
                           : Container(
                               decoration: BoxDecoration(
@@ -931,9 +1028,9 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                             ],
                           ),
                           borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          isManaged ? 'Managed Property' : 'Tenant Property',
+                    ),
+                    child: Text(
+                          isManaged ? AppLocalizations.of(context).managedProperty : AppLocalizations.of(context).tenantProperty,
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -956,8 +1053,8 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                     size: 16,
                   ),
                 ),
-              ],
-            ),
+            ],
+          ),
           ),
         ),
       ),
@@ -972,32 +1069,15 @@ class _PropertiesScreenState extends State<PropertiesScreen>
       backgroundColor: _backgroundColor,
       extendBodyBehindAppBar: false,
       appBar: AppBar(
-        title: Text(
-          _selectedIndex == 0 ? 'Managed Properties' : 'Tenant Properties',
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: currentColor,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        actions: [
-          Stack(
+        automaticallyImplyLeading: false,
+        leading: Builder(
+          builder: (context) => Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_rounded, color: Colors.white),
-                onPressed: () async {
+                icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                onPressed: () {
                   HapticFeedback.lightImpact();
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationsScreen(),
-                    ),
-                  );
-                  _loadNotifications();
+                  Scaffold.of(context).openDrawer();
                 },
               ),
               if (_unreadNotifications > 0)
@@ -1005,21 +1085,14 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                   right: 8,
                   top: 8,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
                       color: Colors.red.shade500,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.4),
-                          blurRadius: 8,
-                          spreadRadius: 0,
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     constraints: const BoxConstraints(
-                      minWidth: 20,
-                      minHeight: 20,
+                      minWidth: 16,
+                      minHeight: 16,
                     ),
                     child: Text(
                       _unreadNotifications > 99 ? '99+' : '$_unreadNotifications',
@@ -1034,121 +1107,230 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                 ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: Colors.white),
-            onPressed: () async {
-              HapticFeedback.mediumImpact();
-              final shouldLogout = await showDialog<bool>(
-                context: context,
-                builder: (context) => Dialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                  elevation: 0,
-                  backgroundColor: Colors.transparent,
-                  child: Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: _cardColor,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          spreadRadius: 0,
-                          offset: const Offset(0, 10),
+        ),
+        title: Text(
+          _selectedIndex == 0 ? AppLocalizations.of(context).managedProperties : AppLocalizations.of(context).tenantProperties,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Colors.white,
+          ),
+        ),
+        centerTitle: true,
+        elevation: 0,
+        backgroundColor: currentColor,
+        systemOverlayStyle: SystemUiOverlayStyle.light,
+      ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: currentColor,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Go Rent',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _selectedIndex == 0 ? 'Manager' : 'Tenant',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 16,
+                      ),
           ),
         ],
       ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
+              ),
+              ListTile(
+                leading: Stack(
+                  children: [
+                    const Icon(Icons.notifications_rounded),
+                    if (_unreadNotifications > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.logout_rounded,
                             color: Colors.red.shade500,
-                            size: 32,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Logout',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: _textPrimary,
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Are you sure you want to logout?',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancel',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: _textSecondary,
-                                  ),
-                                ),
-                              ),
+                          child: Text(
+                            _unreadNotifications > 99 ? '99+' : '$_unreadNotifications',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red.shade500,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 0,
-                                ),
-                                onPressed: () => Navigator.pop(context, true),
-                                child: const Text(
-                                  'Logout',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text(AppLocalizations.of(context).notifications),
+                onTap: () async {
+                  Navigator.pop(context); // Close drawer
+                  HapticFeedback.lightImpact();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsScreen(),
+                    ),
+                  );
+                  _loadNotifications();
+                },
+              ),
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.language_rounded, color: Colors.blueAccent),
+                title: Text('Language (' + (Provider.of<LocalizationService>(context).currentLocale.languageCode == 'bn' ? 'বাংলা' : 'English') + ')'),
+                onTap: _showLanguageDialog,
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded, color: Colors.red),
+                title: Text(AppLocalizations.of(context).logout, style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(context); // Close drawer
+                  HapticFeedback.mediumImpact();
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => Dialog(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      elevation: 0,
+                      backgroundColor: Colors.transparent,
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: _cardColor,
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 10),
                             ),
                           ],
                         ),
+                    child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                      children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.logout_rounded,
+                                color: Colors.red.shade500,
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              AppLocalizations.of(context).logout,
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w700,
+                                color: _textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppLocalizations.of(context).logoutConfirmation,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      AppLocalizations.of(context).cancel,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: _textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red.shade500,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: Text(
+                                      AppLocalizations.of(context).logout,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                        ),
                       ],
                     ),
-                  ),
-                ),
-              );
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
 
-              if (shouldLogout == true) {
-                await _apiService.clearSessionToken();
-                Navigator.of(context).pushReplacementNamed('/login');
-              }
-            },
+                  if (shouldLogout == true) {
+                    await _apiService.clearSessionToken();
+                    Navigator.of(context).pushReplacementNamed('/login');
+                  }
+                },
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Go Rent v1.0',
+                  style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
       body: IndexedStack(
                     index: _selectedIndex,
@@ -1208,12 +1390,12 @@ class _PropertiesScreenState extends State<PropertiesScreen>
           NavigationDestination(
               icon: Icon(Icons.business_rounded, color: _managedColor.withOpacity(0.6)),
               selectedIcon: Icon(Icons.business_rounded, color: _managedColor),
-            label: 'Managed',
+            label: AppLocalizations.of(context).managedProperties,
           ),
           NavigationDestination(
               icon: Icon(Icons.person_rounded, color: _tenantColor.withOpacity(0.6)),
               selectedIcon: Icon(Icons.person_rounded, color: _tenantColor),
-            label: 'Tenant',
+            label: AppLocalizations.of(context).tenantProperties,
           ),
         ],
         ),

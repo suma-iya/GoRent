@@ -11,7 +11,7 @@ class ApiService {
   ApiService._internal();
   // static const String baseUrl = 'http://172.29.118.148:8080';
   // static const String baseUrl = 'http://10.98.246.148:8080';
-  static const String baseUrl = 'http://192.168.0.231:8080';
+  static const String baseUrl = 'http://192.168.0.230:8080';
   String? _sessionToken;
   final _client = http.Client();
   int? _currentUserId;

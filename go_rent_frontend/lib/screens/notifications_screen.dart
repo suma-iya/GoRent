@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../services/api_service.dart';
 import '../models/notification.dart' as models;
 import 'conversation_history_screen.dart';
+import 'package:go_rent_frontend/utils/app_localizations.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({Key? key}) : super(key: key);
@@ -92,22 +93,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Notification ${accept ? 'accepted' : 'rejected'} successfully.'),
+            content: Text(AppLocalizations.of(context).notificationAcceptedSuccessfully(accept ? 'accepted' : 'rejected')),
             backgroundColor: accept ? Colors.green : Colors.orange,
           ),
         );
         await _loadNotifications();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to process the action.'),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).failedToProcessTheAction),
             backgroundColor: Colors.red,
           ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text(AppLocalizations.of(context).error(e.toString())), backgroundColor: Colors.red),
       );
     }
   }
@@ -116,7 +117,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
     final comment = _commentControllers[notification.id]?.text.trim();
     if (comment == null || comment.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a comment'), backgroundColor: Colors.orange),
+        SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterAComment), backgroundColor: Colors.orange),
       );
       return;
     }
@@ -125,7 +126,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
       final success = await _apiService.sendComment(notification.id, comment);
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Comment sent successfully'), backgroundColor: Colors.green),
+          SnackBar(content: Text(AppLocalizations.of(context).commentSentSuccessfully), backgroundColor: Colors.green),
         );
 
         setState(() {
@@ -137,12 +138,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
       await _loadNotifications();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send comment'), backgroundColor: Colors.red),
+          SnackBar(content: Text(AppLocalizations.of(context).failedToSendComment), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        SnackBar(content: Text(AppLocalizations.of(context).error(e.toString())), backgroundColor: Colors.red),
       );
     }
   }
@@ -180,9 +181,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
       child: Scaffold(
         backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-          title: const Text(
-            'Notifications',
-            style: TextStyle(
+          title: Text(
+            AppLocalizations.of(context).notifications,
+            style: const TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 20,
               color: Colors.white,
@@ -207,17 +208,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
           ],
       ),
       body: _isLoading
-            ? const Center(
+            ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(
+                    const CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2196F3)),
                     ),
-                    SizedBox(height: 16),
+                    const SizedBox(height: 16),
                     Text(
-                      'Loading notifications...',
-                      style: TextStyle(
+                      AppLocalizations.of(context).loadingNotifications,
+                      style: const TextStyle(
                         fontSize: 16,
                         color: Colors.grey,
                       ),
@@ -248,7 +249,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                         ElevatedButton.icon(
                         onPressed: _loadNotifications,
                           icon: const Icon(Icons.refresh),
-                          label: const Text('Retry'),
+                            label: Text(AppLocalizations.of(context).retry),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF2196F3),
                             foregroundColor: Colors.white,
@@ -287,7 +288,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                             ),
                             const SizedBox(height: 24),
                             Text(
-                              'No notifications yet',
+                              AppLocalizations.of(context).noNotificationsYet,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
@@ -296,7 +297,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              'You\'ll see your notifications here',
+                              AppLocalizations.of(context).youllSeeYourNotificationsHere,
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey.shade500,
@@ -483,7 +484,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                         TextField(
                           controller: _commentControllers[notification.id],
                           decoration: InputDecoration(
-                            labelText: 'Add your comment...',
+                            labelText: AppLocalizations.of(context).addYourComment,
                             labelStyle: TextStyle(color: Colors.grey.shade600),
                             filled: true,
                             fillColor: Colors.grey.shade50,
@@ -514,7 +515,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                                   });
                                 },
                                 child: Text(
-                                  'Cancel',
+                                  AppLocalizations.of(context).cancel,
                                   style: TextStyle(color: Colors.grey.shade600),
                                 ),
                               ),
@@ -529,7 +530,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                child: const Text('Send'),
+                                child: Text(AppLocalizations.of(context).send),
                               ),
                             ],
                                           ),
@@ -552,20 +553,20 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                                       if (notification.status == 'pending' && notification.showActions) ...[
                         _buildActionButton(
                           Icons.check_circle,
-                          'Accept',
+                          AppLocalizations.of(context).accept,
                           const Color(0xFF4CAF50),
                           () => _handleNotificationAction(notification, true),
                         ),
                         _buildActionButton(
                           Icons.cancel,
-                          'Reject',
+                          AppLocalizations.of(context).reject,
                           const Color(0xFFF44336),
                           () => _handleNotificationAction(notification, false),
                         ),
                         if (notification.comment == null || notification.comment!.isEmpty)
                           _buildActionButton(
                             Icons.comment,
-                            'Add Comment',
+                            AppLocalizations.of(context).addComment,
                             const Color(0xFF2196F3),
                             () {
                               setState(() {
@@ -580,7 +581,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                           _showCommentInput[notification.id] != true)
                         _buildActionButton(
                           Icons.comment,
-                          'Add Comment',
+                          AppLocalizations.of(context).addComment,
                           const Color(0xFF2196F3),
                           () {
                             setState(() {

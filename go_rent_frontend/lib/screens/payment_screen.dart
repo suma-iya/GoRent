@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/property.dart';
 import '../models/floor.dart';
 import '../services/api_service.dart';
+import '../utils/app_localizations.dart';
 
 class PaymentScreen extends StatefulWidget {
   final Property property;
@@ -133,7 +134,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Adjust Due Rent'),
+          title: Text(AppLocalizations.of(context).adjustDueRent),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -161,7 +162,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  'Add',
+                                  AppLocalizations.of(context).add,
                                   style: TextStyle(
                                     color: isAddition ? Colors.white : Colors.grey.shade600,
                                     fontWeight: FontWeight.w600,
@@ -196,7 +197,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
-                                  'Subtract',
+                                  AppLocalizations.of(context).subtract,
                                   style: TextStyle(
                                     color: !isAddition ? Colors.white : Colors.grey.shade600,
                                     fontWeight: FontWeight.w600,
@@ -220,8 +221,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   setState(() {}); // Trigger rebuild to update preview
                 },
                 decoration: InputDecoration(
-                  labelText: 'Rent Amount',
-                  hintText: 'Enter rent amount to ${isAddition ? 'add' : 'subtract'}',
+                                      labelText: AppLocalizations.of(context).rentAmount,
+                  hintText: '${AppLocalizations.of(context).enterPaymentAmount} ${isAddition ? AppLocalizations.of(context).add.toLowerCase() : AppLocalizations.of(context).subtract.toLowerCase()}',
                   prefixIcon: Icon(
                     isAddition ? Icons.add_rounded : Icons.remove_rounded,
                     color: isAddition ? _primaryColor : Colors.red.shade500,
@@ -234,8 +235,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               TextField(
                 controller: electricityBillController,
                 decoration: InputDecoration(
-                  labelText: 'Electricity Bill (Optional)',
-                  hintText: 'Enter electricity bill amount',
+                  labelText: AppLocalizations.of(context).electricityBillOptional,
+                  hintText: AppLocalizations.of(context).enterElectricityBill,
                   prefixIcon: Icon(
                     Icons.electric_bolt_rounded,
                     color: Colors.orange.shade600,
@@ -274,8 +275,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Current: \$${_dueRent.toStringAsFixed(2)}',
+                                          Text(
+                        '${AppLocalizations.of(context).current}: ${_dueRent.toStringAsFixed(2)} ${AppLocalizations.of(context).tk}',
                       style: TextStyle(
                         color: _textSecondary,
                         fontSize: 14,
@@ -290,8 +291,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'New total: \$${(isAddition ? _dueRent + (int.tryParse(amountController.text) ?? 0) : _dueRent - (int.tryParse(amountController.text) ?? 0)).toStringAsFixed(2)}',
+                                          Text(
+                        '${AppLocalizations.of(context).newTotal}: ${(isAddition ? _dueRent + (int.tryParse(amountController.text) ?? 0) : _dueRent - (int.tryParse(amountController.text) ?? 0)).toStringAsFixed(2)} ${AppLocalizations.of(context).tk}',
                       style: TextStyle(
                         color: _textPrimary,
                         fontSize: 16,
@@ -307,7 +308,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context).cancel),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -315,7 +316,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 
                 if (amount == null || amount <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid positive amount')),
+                    SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidPositiveAmount)),
                   );
                   return;
                 }
@@ -326,7 +327,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 // Prevent negative due rent
                 if (newDueRent < 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Due rent cannot be negative')),
+                    SnackBar(content: Text(AppLocalizations.of(context).dueRentCannotBeNegative)),
                   );
                   return;
                 }
@@ -352,8 +353,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     Navigator.pop(context);
                     _loadPaymentDetails();
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Due rent ${isAddition ? 'increased' : 'decreased'} successfully!')),
-                    );
+                        SnackBar(content: Text('${AppLocalizations.of(context).dueRent} ${isAddition ? AppLocalizations.of(context).increased : AppLocalizations.of(context).decreased} ${AppLocalizations.of(context).successfully}!')),
+                      );
                   } else {
                     throw Exception('Failed to update due rent');
                   }
@@ -368,7 +369,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 backgroundColor: isAddition ? _primaryColor : Colors.red.shade500,
                 foregroundColor: Colors.white,
               ),
-              child: Text(isAddition ? 'Add Amount' : 'Subtract Amount'),
+              child: Text(isAddition ? AppLocalizations.of(context).addAmount : AppLocalizations.of(context).subtractAmount),
             ),
           ],
         ),
@@ -468,8 +469,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
               children: [
                 Expanded(
                   child: _buildPaymentDetail(
-                    'Due Rent',
-                    '${dueRent.toStringAsFixed(2)} tk',
+                                          AppLocalizations.of(context).dueRent,
+                    '${dueRent.toStringAsFixed(2)} ${AppLocalizations.of(context).tk}',
                     Colors.red.shade600,
                     Icons.money_off_rounded,
                   ),
@@ -477,8 +478,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildPaymentDetail(
-                    'Received',
-                    '${receivedMoney.toStringAsFixed(2)} tk',
+                                          AppLocalizations.of(context).receivedMoney,
+                    '${receivedMoney.toStringAsFixed(2)} ${AppLocalizations.of(context).tk}',
                     Colors.green.shade600,
                     Icons.money_rounded,
                   ),
@@ -574,16 +575,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
           fontSize: 12,
           color: _textPrimary,
         ),
-        columns: const [
-          DataColumn(label: Text('Date')),
-          DataColumn(label: Text('New Added\nRent')),
-          DataColumn(label: Text('Rent')),
-          DataColumn(label: Text('Received\nMoney')),
-          DataColumn(label: Text('Due Rent')),
-          DataColumn(label: Text('New Added\nElectricity Bill')),
-          DataColumn(label: Text('Electricity\nBill')),
-          DataColumn(label: Text('Paid\nElectricity Bill')),
-          DataColumn(label: Text('Due\nElectricity Bill')),
+        columns: [
+          DataColumn(label: Text(AppLocalizations.of(context).date)),
+          DataColumn(label: Text(AppLocalizations.of(context).newAddedRent)),
+          DataColumn(label: Text(AppLocalizations.of(context).rent)),
+          DataColumn(label: Text(AppLocalizations.of(context).receivedMoney)),
+          DataColumn(label: Text(AppLocalizations.of(context).dueRent)),
+          DataColumn(label: Text(AppLocalizations.of(context).newAddedElectricityBill)),
+          DataColumn(label: Text(AppLocalizations.of(context).electricityBill)),
+          DataColumn(label: Text(AppLocalizations.of(context).paidElectricity)),
+          DataColumn(label: Text(AppLocalizations.of(context).dueElectricityBill)),
         ],
         rows: paymentsWithTotals.map((payment) {
           final createdAt = payment['created_at'] as String? ?? '';
@@ -616,7 +617,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${newAddedRent > 0 ? '+' : ''}${newAddedRent.toStringAsFixed(0)} tk',
+                    '${newAddedRent > 0 ? '+' : ''}${newAddedRent.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -627,7 +628,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ),
               DataCell(
                 Text(
-                  '${rent.toStringAsFixed(0)} tk',
+                  '${rent.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -643,7 +644,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${receivedMoney.toStringAsFixed(0)} tk',
+                    '${receivedMoney.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -660,7 +661,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${dueRent.toStringAsFixed(0)} tk',
+                    '${dueRent.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -678,7 +679,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '${newAddedElectricityBill > 0 ? '+' : ''}${newAddedElectricityBill.toStringAsFixed(0)} tk',
+                          '${newAddedElectricityBill > 0 ? '+' : ''}${newAddedElectricityBill.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -702,7 +703,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${electricityBill.toStringAsFixed(0)} tk',
+                    '${electricityBill.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -720,7 +721,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '${paidElectricityBill.toStringAsFixed(0)} tk',
+                          '${paidElectricityBill.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
@@ -744,7 +745,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
-                    '${dueElectricityBill.toStringAsFixed(0)} tk',
+                    '${dueElectricityBill.toStringAsFixed(0)} ${AppLocalizations.of(context).tk}',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -837,8 +838,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Payment Details',
+        title: Text(
+          AppLocalizations.of(context).paymentDetails,
           style: TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 20,
@@ -920,7 +921,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Payment Details',
+                              AppLocalizations.of(context).paymentDetails,
                               style: TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
@@ -954,7 +955,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              'Rent',
+                                              AppLocalizations.of(context).rent,
                                               style: TextStyle(
                                                 fontSize: 14,
                                                 color: _textSecondary,
@@ -962,7 +963,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                             Text(
-                                              '$_dueRent tk',
+                                              '$_dueRent ${AppLocalizations.of(context).tk}',
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.w700,
@@ -1028,7 +1029,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
-                                  'Payment History',
+                                  AppLocalizations.of(context).paymentHistory,
                                   style: TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w700,

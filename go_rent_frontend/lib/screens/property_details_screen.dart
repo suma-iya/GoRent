@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import 'notifications_screen.dart';
 import 'pending_payment_notifications_screen.dart';
 import 'payment_screen.dart';
+import '../utils/app_localizations.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final Property property;
@@ -35,14 +36,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   final Color _textSecondary = const Color(0xFF64748B);
   
   Color get _themeColor => _isManager ? _managedColor : _tenantColor;
+  String _getMonthName(BuildContext context, int month) {
+  final local = AppLocalizations.of(context)!;
+  final monthMap = {
+  1: local.monthJanuary,
+  2: local.monthFebruary,
+  3: local.monthMarch,
+  4: local.monthApril,
+  5: local.monthMay,
+  6: local.monthJune,
+  7: local.monthJuly,
+  8: local.monthAugust,
+  9: local.monthSeptember,
+  10: local.monthOctober,
+  11: local.monthNovember,
+  12: local.monthDecember,
+  };
+  return monthMap[month] ?? '';
+}
 
-  String _getMonthName(int month) {
-    const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    return months[month - 1];
-  }
 
   @override
   void initState() {
@@ -96,27 +108,28 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Future<void> _showAddFloorDialog() async {
     final nameController = TextEditingController();
     final rentController = TextEditingController();
+    
 
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add New Floor'),
+        title: Text(AppLocalizations.of(context).addFloor),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Floor Name',
-                hintText: 'e.g., Ground Floor, First Floor',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).floorName,
+                hintText: AppLocalizations.of(context).floorNameHint,
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: rentController,
-              decoration: const InputDecoration(
-                labelText: 'Monthly Rent',
-                hintText: 'Enter amount in rupees',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).monthlyRent,
+                hintText: AppLocalizations.of(context).rentHint,
               ),
               keyboardType: TextInputType.number,
             ),
@@ -125,13 +138,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () async {
               if (nameController.text.isEmpty || rentController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
+                  SnackBar(content: Text(AppLocalizations.of(context).fillAllFields)),
                 );
                 return;
               }
@@ -139,7 +152,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               try {
                 final rent = int.tryParse(rentController.text);
                 if (rent == null) {
-                  throw Exception('Invalid rent amount');
+                  throw Exception(AppLocalizations.of(context).invalidRentAmount);
                 }
 
                 final success = await _apiService.addFloor(
@@ -152,15 +165,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   Navigator.pop(context);
                   _loadPropertyDetails();
                 } else {
-                  throw Exception('Failed to add floor');
+                  throw Exception(AppLocalizations.of(context).failedToAddFloor);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
               }
             },
-            child: const Text('Add'),
+            child: Text(AppLocalizations.of(context).add),
           ),
         ],
       ),
@@ -174,23 +187,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add Tenant'),
+        title: Text(AppLocalizations.of(context).addTenant),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Tenant Name',
-                hintText: 'Enter tenant name',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).tenantName,
+                  hintText: AppLocalizations.of(context).enterTenantName,
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Phone Number',
-                hintText: 'Enter tenant phone number',
+                decoration: InputDecoration(
+                  labelText: AppLocalizations.of(context).phoneNumber,
+                  hintText: AppLocalizations.of(context).enterPhoneNumber,
               ),
               keyboardType: TextInputType.phone,
             ),
@@ -199,13 +212,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () async {
               if (nameController.text.isEmpty || phoneController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
+                  SnackBar(content: Text(AppLocalizations.of(context).fillAllFields)),
                 );
                 return;
               }
@@ -222,15 +235,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   Navigator.pop(context);
                   _loadPropertyDetails();
                 } else {
-                  throw Exception('Failed to add tenant');
+                  throw Exception(AppLocalizations.of(context).failedToAddTenant);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
               }
             },
-            child: const Text('Add'),
+            child: Text(AppLocalizations.of(context).add),
           ),
         ],
       ),
@@ -241,12 +254,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Remove Tenant'),
-        content: const Text('Are you sure you want to remove the tenant from this floor?'),
+        title: Text(AppLocalizations.of(context).removeTenant),
+        content: Text(AppLocalizations.of(context).removeTenantConfirmation),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -260,18 +273,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   Navigator.pop(context);
                   _loadPropertyDetails();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tenant removed successfully')),
+                    SnackBar(content: Text(AppLocalizations.of(context).tenantRemovedSuccessfully)),
                   );
                 } else {
-                  throw Exception('Failed to remove tenant');
+                  throw Exception(AppLocalizations.of(context).failedToRemoveTenant);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
               }
             },
-            child: const Text('Remove'),
+            child: Text(AppLocalizations.of(context).remove),
           ),
         ],
       ),
@@ -285,23 +298,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Update Floor'),
+        title: Text(AppLocalizations.of(context).updateFloor),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Floor Name',
-                hintText: 'e.g., Ground Floor, First Floor',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).floorName,
+                hintText: AppLocalizations.of(context).floorNameHint,
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: rentController,
-              decoration: const InputDecoration(
-                labelText: 'Monthly Rent',
-                hintText: 'Enter amount in rupees',
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).monthlyRent,
+                hintText: AppLocalizations.of(context).rentHint,
               ),
               keyboardType: TextInputType.number,
             ),
@@ -310,13 +323,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () async {
               if (nameController.text.isEmpty || rentController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill all fields')),
+                  SnackBar(content: Text(AppLocalizations.of(context).fillAllFields)),
                 );
                 return;
               }
@@ -324,7 +337,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
               try {
                 final rent = int.tryParse(rentController.text);
                 if (rent == null) {
-                  throw Exception('Invalid rent amount');
+                  throw Exception(AppLocalizations.of(context).invalidRentAmount);
                 }
 
                 final success = await _apiService.updateFloor(
@@ -338,15 +351,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   Navigator.pop(context);
                   _loadPropertyDetails();
                 } else {
-                  throw Exception('Failed to update floor');
+                  throw Exception(AppLocalizations.of(context).failedToUpdateFloor);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
               }
             },
-            child: const Text('Update'),
+            child: Text(AppLocalizations.of(context).update),
           ),
         ],
       ),
@@ -364,7 +377,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: const Text('Send Tenant Request'),
+            title: Text(AppLocalizations.of(context).sendTenantRequest),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -374,7 +387,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   TextField(
                     controller: phoneController,
                     decoration: InputDecoration(
-                      labelText: 'Phone Number',
+                      labelText: AppLocalizations.of(context).phoneNumber,
                       suffixIcon: IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
@@ -402,7 +415,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           });
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
+                              SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                             );
                           }
                         }
@@ -440,13 +453,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context).cancel),
               ),
               TextButton(
                 onPressed: () async {
                   if (phoneController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter a phone number')),
+                      SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber)),
                     );
                     return;
                   }
@@ -462,7 +475,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       if (mounted) {
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Tenant request sent successfully')),
+                          SnackBar(content: Text(AppLocalizations.of(context).tenantRequestSentSuccessfully)),
                         );
                         await _loadPropertyDetails(); // Refresh property details
                       }
@@ -487,7 +500,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     }
                   }
                 },
-                child: const Text('Send Request'),
+                child: Text(AppLocalizations.of(context).sendRequest),
               ),
             ],
           );
@@ -500,12 +513,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancel Request'),
-        content: const Text('Are you sure you want to cancel this tenant request?'),
+        title: Text(AppLocalizations.of(context).cancelRequest),
+        content: Text(AppLocalizations.of(context).cancelRequestConfirmation),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
+            child: Text(AppLocalizations.of(context).no),
           ),
           TextButton(
             onPressed: () async {
@@ -515,18 +528,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   Navigator.pop(context);
                   _loadPropertyDetails();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Request cancelled successfully')),
+                    SnackBar(content: Text(AppLocalizations.of(context).requestCancelledSuccessfully)),
                   );
                 } else {
-                  throw Exception('Failed to cancel request');
+                  throw Exception(AppLocalizations.of(context).failedToCancelRequest);
                 }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
               }
             },
-            child: const Text('Yes'),
+            child: Text(AppLocalizations.of(context).yes),
           ),
         ],
       ),
@@ -541,25 +554,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-        title: const Text('Send Payment Notification'),
+        title: Text(AppLocalizations.of(context).sendPaymentNotification),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
           controller: amountController,
-          decoration: const InputDecoration(
-            labelText: 'Payment Amount',
-            hintText: 'Enter payment amount',
+          decoration: InputDecoration(
+            labelText: AppLocalizations.of(context).paymentAmount,
+            hintText: AppLocalizations.of(context).enterPaymentAmount,
           ),
           keyboardType: TextInputType.number,
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: electricityBillController,
-                decoration: const InputDecoration(
-                  labelText: 'Electricity Bill (Optional)',
-                  hintText: 'Enter electricity bill amount to pay',
-                ),
+                                  decoration: InputDecoration(
+                    labelText: AppLocalizations.of(context).electricityBill,
+                    hintText: AppLocalizations.of(context).enterElectricityBill,
+                  ),
                 keyboardType: TextInputType.number,
               ),
             ],
@@ -567,14 +580,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context).cancel),
           ),
           TextButton(
             onPressed: () async {
               final amount = int.tryParse(amountController.text);
               if (amount == null) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please enter a valid amount')),
+                  SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidAmount)),
                 );
                 return;
               }
@@ -585,7 +598,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 electricityBill = int.tryParse(electricityBillController.text);
                 if (electricityBill == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter a valid electricity bill amount')),
+                    SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidElectricityBill)),
                   );
                   return;
                 }
@@ -600,7 +613,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 );
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Payment notification sent!')),
+                  SnackBar(content: Text(AppLocalizations.of(context).paymentNotificationSent)),
                 );
               } catch (e) {
                 Navigator.pop(context);
@@ -609,7 +622,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 );
               }
             },
-            child: const Text('Send'),
+            child: Text(AppLocalizations.of(context).send),
             ),
           ],
         ),
@@ -627,18 +640,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     
     // Month options
     final List<Map<String, dynamic>> monthOptions = [
-      {'value': 1, 'label': 'January'},
-      {'value': 2, 'label': 'February'},
-      {'value': 3, 'label': 'March'},
-      {'value': 4, 'label': 'April'},
-      {'value': 5, 'label': 'May'},
-      {'value': 6, 'label': 'June'},
-      {'value': 7, 'label': 'July'},
-      {'value': 8, 'label': 'August'},
-      {'value': 9, 'label': 'September'},
-      {'value': 10, 'label': 'October'},
-      {'value': 11, 'label': 'November'},
-      {'value': 12, 'label': 'December'},
+      {'value': 1, 'label': AppLocalizations.of(context).monthJanuary},
+      {'value': 2, 'label': AppLocalizations.of(context).monthFebruary},
+      {'value': 3, 'label': AppLocalizations.of(context).monthMarch},
+      {'value': 4, 'label': AppLocalizations.of(context).monthApril},
+      {'value': 5, 'label': AppLocalizations.of(context).monthMay},
+      {'value': 6, 'label': AppLocalizations.of(context).monthJune},
+      {'value': 7, 'label': AppLocalizations.of(context).monthJuly},
+      {'value': 8, 'label': AppLocalizations.of(context).monthAugust},
+      {'value': 9, 'label': AppLocalizations.of(context).monthSeptember},
+      {'value': 10, 'label': AppLocalizations.of(context).monthOctober},
+      {'value': 11, 'label': AppLocalizations.of(context).monthNovember},
+      {'value': 12, 'label': AppLocalizations.of(context).monthDecember},
     ];
     
     return showDialog(
@@ -646,122 +659,128 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: const Text('Send Advance Payment Request'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Phone number field with search
-                if (isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  TextField(
-                    controller: phoneController,
-                    decoration: InputDecoration(
-                      labelText: 'Phone Number',
-                      hintText: 'Enter or search phone number',
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          phoneController.clear();
-                          setState(() {
-                            filteredPhones = [];
-                          });
-                        },
-                      ),
-                    ),
-                    onTap: () async {
-                      if (allPhones.isEmpty) {
-                        setState(() {
-                          isLoading = true;
-                        });
-                        try {
-                          allPhones = await _apiService.getUserPhones();
-                          setState(() {
-                            filteredPhones = allPhones;
-                            isLoading = false;
-                          });
-                        } catch (e) {
-                          setState(() {
-                            isLoading = false;
-                          });
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          }
-                        }
-                      }
-                    },
-                    onChanged: (value) {
-                      setState(() {
-                        filteredPhones = allPhones
-                            .where((phone) => phone.contains(value))
-                            .toList();
-                      });
-                    },
-                  ),
-                if (filteredPhones.isNotEmpty)
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 150),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: filteredPhones.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(filteredPhones[index]),
-                          onTap: () {
-                            phoneController.text = filteredPhones[index];
+              title: Text(AppLocalizations.of(context).sendAdvancePaymentRequest),
+              content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Phone number field with search
+                  if (isLoading)
+                    const Center(child: CircularProgressIndicator())
+                  else
+                    TextField(
+                      controller: phoneController,
+                      decoration: InputDecoration(
+                        labelText: AppLocalizations.of(context).phoneNumber,
+                        hintText: AppLocalizations.of(context).enterPhoneNumber,
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            phoneController.clear();
                             setState(() {
                               filteredPhones = [];
                             });
                           },
-                        );
+                        ),
+                      ),
+                      onTap: () async {
+                        if (allPhones.isEmpty) {
+                          setState(() {
+                            isLoading = true;
+                          });
+                          try {
+                            allPhones = await _apiService.getUserPhones();
+                            setState(() {
+                              filteredPhones = allPhones;
+                              isLoading = false;
+                            });
+                          } catch (e) {
+                            setState(() {
+                              isLoading = false;
+                            });
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      onChanged: (value) {
+                        setState(() {
+                          filteredPhones = allPhones
+                              .where((phone) => phone.contains(value))
+                              .toList();
+                        });
                       },
                     ),
+                  if (filteredPhones.isNotEmpty)
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 120),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: filteredPhones.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            dense: true,
+                            title: Text(
+                              filteredPhones[index],
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            onTap: () {
+                              phoneController.text = filteredPhones[index];
+                              setState(() {
+                                filteredPhones = [];
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  // Amount field
+                  TextField(
+                    controller: moneyController,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context).amount,
+                      hintText: AppLocalizations.of(context).enterAdvancePaymentAmount,
+                    ),
+                    keyboardType: TextInputType.number,
                   ),
-                const SizedBox(height: 16),
-                // Amount field
-                TextField(
-                  controller: moneyController,
-                  decoration: const InputDecoration(
-                    labelText: 'Amount',
-                    hintText: 'Enter advance payment amount',
+                  const SizedBox(height: 12),
+                  // Month dropdown
+                  DropdownButtonFormField<int>(
+                    value: selectedMonth,
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context).month,
+                      border: const OutlineInputBorder(),
+                    ),
+                    hint: Text(AppLocalizations.of(context).selectMonth),
+                    items: monthOptions.map((month) {
+                      return DropdownMenuItem<int>(
+                        value: month['value'],
+                        child: Text(month['label']),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedMonth = value;
+                      });
+                    },
                   ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                // Month dropdown
-                DropdownButtonFormField<int>(
-                  value: selectedMonth,
-                  decoration: const InputDecoration(
-                    labelText: 'Month',
-                    border: OutlineInputBorder(),
-                  ),
-                  hint: const Text('Select a month'),
-                  items: monthOptions.map((month) {
-                    return DropdownMenuItem<int>(
-                      value: month['value'],
-                      child: Text(month['label']),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedMonth = value;
-                    });
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
+                child: Text(AppLocalizations.of(context).cancel),
               ),
               TextButton(
                 onPressed: () async {
                   if (phoneController.text.isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter a phone number')),
+                    SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber)),
                     );
                     return;
                   }
@@ -769,14 +788,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   final money = int.tryParse(moneyController.text);
                   if (money == null || money <= 0) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter a valid amount')),
+                      SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidAmount)),
                     );
                     return;
                   }
                   
                   if (selectedMonth == null) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please select a month')),
+                      SnackBar(content: Text(AppLocalizations.of(context).pleaseSelectMonth)),
                     );
                     return;
                   }
@@ -796,7 +815,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     if (success) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Advance payment request sent successfully!')),
+                        SnackBar(content: Text(AppLocalizations.of(context).advancePaymentRequestSentSuccessfully)),
                       );
                       // Reload property details to update the UI
                       _loadPropertyDetails();
@@ -806,11 +825,11 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   } catch (e) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: $e')),
+                      SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                     );
                   }
                 },
-                child: const Text('Send'),
+                child: Text(AppLocalizations.of(context).send),
               ),
             ],
           );
@@ -823,12 +842,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancel Advance Payment Request'),
-        content: const Text('Are you sure you want to cancel the pending advance payment request for this floor?'),
+        title: Text(AppLocalizations.of(context).cancelAdvancePaymentRequest),
+        content: Text(AppLocalizations.of(context).cancelAdvancePaymentRequestConfirmation),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('No'),
+            child: Text(AppLocalizations.of(context).no),
           ),
           TextButton(
             onPressed: () async {
@@ -838,21 +857,21 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 if (success) {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Advance payment request cancelled successfully!')),
+                    SnackBar(content: Text(AppLocalizations.of(context).advancePaymentRequestCancelledSuccessfully)),
                   );
                   // Reload property details to update the UI
                   _loadPropertyDetails();
                 } else {
-                  throw Exception('Failed to cancel advance payment request');
+                  throw Exception(AppLocalizations.of(context).failedToCancelAdvancePaymentRequest);
                 }
               } catch (e) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
+                  SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
               }
             },
-            child: const Text('Yes, Cancel'),
+            child: Text(AppLocalizations.of(context).yesCancelAdvancePaymentRequest),
           ),
         ],
       ),
@@ -950,7 +969,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: _loadPropertyDetails,
-                          child: const Text('Retry'),
+                          child: Text(AppLocalizations.of(context).retry),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _themeColor,
                             foregroundColor: Colors.white,
@@ -969,12 +988,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text('No floors added yet'),
+                            Text(AppLocalizations.of(context).noFloorsAddedYet),
                             if (_isManager) ...[
                               const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _showAddFloorDialog,
-                                child: const Text('Add First Floor'),
+                                child: Text(AppLocalizations.of(context).addFirstFloor),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _themeColor,
                                   foregroundColor: Colors.white,
@@ -1091,12 +1110,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                         color: themeColor.withOpacity(0.12),
                                                         borderRadius: BorderRadius.circular(12),
                                                       ),
-                                                      child: Text(
-                                                        actualStatus == 'occupied'
-                                                            ? 'Occupied'
-                                                            : actualStatus == 'pending'
-                                                                ? 'Pending'
-                                                                : 'Available',
+                                                                                                                child: Text(
+                                                            actualStatus == 'occupied'
+                                                               ? AppLocalizations.of(context).occupied
+                                                               : actualStatus == 'pending'
+                                                                 ? AppLocalizations.of(context).pending
+                                                                 : AppLocalizations.of(context).available,
                                                         style: TextStyle(
                                                           fontSize: 12,
                                                           fontWeight: FontWeight.w600,
@@ -1117,7 +1136,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                     const SizedBox(width: 4),
                                                     Expanded(
                                                       child: Text(
-                                                        'Rent: ${floor.rent} tk/month',
+                                                        '${AppLocalizations.of(context).rent}: ${floor.rent} ${AppLocalizations.of(context).currency}',
                                                         style: TextStyle(
                                                           fontSize: 14,
                                                           color: _textSecondary,
@@ -1139,7 +1158,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                       const SizedBox(width: 4),
                                                       Expanded(
                                                         child: Text(
-                                                          'Tenant: ${floor.tenantName ?? 'Unknown User'}',
+                                                          '${AppLocalizations.of(context).tenant}: ${floor.tenantName ?? 'Unknown User'}',
                                                           style: TextStyle(
                                                             fontSize: 14,
                                                             color: _textSecondary,
@@ -1158,7 +1177,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                       const SizedBox(width: 4),
                                                       Expanded(
                                                         child: Text(
-                                                          'Request Pending',
+                                                          AppLocalizations.of(context).requestPending,
                                                           style: TextStyle(
                                                             color: Colors.orange,
                                                             fontWeight: FontWeight.bold,
@@ -1182,7 +1201,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                         ),
                                       );
                                                           },
-                                                          child: const Text('Tap to view',
+                                                          child: Text(AppLocalizations.of(context).tapToView,
                                                             style: TextStyle(color: Colors.orange, fontSize: 12)),
                                                         ),
                                                       ],
@@ -1239,7 +1258,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                       width: double.infinity,
                                       child: ElevatedButton.icon(
                                             icon: const Icon(Icons.payment_rounded),
-                                        label: const Text('Send Payment Notification'),
+                                        label: Text(AppLocalizations.of(context).sendPaymentNotification),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: _themeColor,
                                               foregroundColor: Colors.white,
@@ -1269,8 +1288,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         foregroundColor: Colors.white,
         elevation: 8,
         icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Add Floor',
+        label: Text(
+          AppLocalizations.of(context).addFloor,
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         shape: RoundedRectangleBorder(
