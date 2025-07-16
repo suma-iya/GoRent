@@ -361,15 +361,15 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                     const SizedBox(height: 24),
                     _buildModernTextField(
                       controller: nameController,
-                      label: 'Property Name',
-                      hint: 'Enter property name',
+                      label: AppLocalizations.of(context).propertyName,
+                      hint: AppLocalizations.of(context).propertyNameHint,
                       icon: Icons.home_rounded,
                     ),
                     const SizedBox(height: 16),
                     _buildModernTextField(
                       controller: addressController,
-                      label: 'Address',
-                      hint: 'Enter property address',
+                      label: AppLocalizations.of(context).address,
+                      hint: AppLocalizations.of(context).addressHint,
                       icon: Icons.location_on_rounded,
                       maxLines: 2,
                     ),
@@ -1339,25 +1339,22 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                       _buildTenantPropertiesFragment(),
                     ],
       ),
-      floatingActionButton: _selectedIndex == 0
-          ? ScaleTransition(
-              scale: _fabAnimation,
-              child: FloatingActionButton.extended(
-              onPressed: _showAddPropertyDialog,
-                backgroundColor: _managedColor,
-                foregroundColor: Colors.white,
-                elevation: 8,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text(
-                  'Add Property',
-                  style: TextStyle(fontWeight: FontWeight.w600),
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-            )
-          : null,
+    floatingActionButton: _selectedIndex == 0
+    ? ScaleTransition(
+        scale: _fabAnimation,
+        child: FloatingActionButton.extended(
+          onPressed: _showAddPropertyDialog,
+          backgroundColor: _managedColor,
+          foregroundColor: Colors.white,
+          elevation: 8,
+          icon: const Icon(Icons.add_rounded),
+          label: Text(
+            AppLocalizations.of(context).addProperty,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      )
+    : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: _cardColor,

@@ -546,25 +546,48 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                     !(notification.status == 'pending' && notification.showActions) &&
                     _showCommentInput[notification.id] != true) ...[
                   const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                                    children: [
-                                      if (notification.status == 'pending' && notification.showActions) ...[
-                        _buildActionButton(
-                          Icons.check_circle,
-                          AppLocalizations.of(context).accept,
-                          const Color(0xFF4CAF50),
-                          () => _handleNotificationAction(notification, true),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      if (notification.status == 'pending' && notification.showActions) ...[
+                        Expanded(
+                          child: _buildActionButton(
+                            Icons.check_circle,
+                            AppLocalizations.of(context).accept,
+                            const Color(0xFF4CAF50),
+                            () => _handleNotificationAction(notification, true),
+                          ),
                         ),
-                        _buildActionButton(
-                          Icons.cancel,
-                          AppLocalizations.of(context).reject,
-                          const Color(0xFFF44336),
-                          () => _handleNotificationAction(notification, false),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: _buildActionButton(
+                            Icons.cancel,
+                            AppLocalizations.of(context).reject,
+                            const Color(0xFFF44336),
+                            () => _handleNotificationAction(notification, false),
+                          ),
                         ),
-                        if (notification.comment == null || notification.comment!.isEmpty)
-                          _buildActionButton(
+                        if (notification.comment == null || notification.comment!.isEmpty) ...[
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: _buildActionButton(
+                              Icons.comment,
+                              AppLocalizations.of(context).addComment,
+                              const Color(0xFF2196F3),
+                              () {
+                                setState(() {
+                                  _showCommentInput[notification.id] = true;
+                                  _commentControllers[notification.id] = TextEditingController();
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ] else if ((notification.comment == null || notification.comment!.isEmpty) &&
+                          !(notification.status == 'pending' && notification.showActions) &&
+                          _showCommentInput[notification.id] != true) ...[
+                        Expanded(
+                          child: _buildActionButton(
                             Icons.comment,
                             AppLocalizations.of(context).addComment,
                             const Color(0xFF2196F3),
@@ -574,25 +597,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                                 _commentControllers[notification.id] = TextEditingController();
                               });
                             },
-                                        ),
-                                      ],
-                      if ((notification.comment == null || notification.comment!.isEmpty) &&
-                          !(notification.status == 'pending' && notification.showActions) &&
-                          _showCommentInput[notification.id] != true)
-                        _buildActionButton(
-                          Icons.comment,
-                          AppLocalizations.of(context).addComment,
-                          const Color(0xFF2196F3),
-                          () {
-                            setState(() {
-                              _showCommentInput[notification.id] = true;
-                              _commentControllers[notification.id] = TextEditingController();
-                            });
-                          },
-                                      ),
-                                    ],
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                                ],
+                ],
 
 
               ],
@@ -611,40 +621,44 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(8),
         boxShadow: [
           BoxShadow(
             color: color.withOpacity(0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           onTap: onPressed,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 18, color: Colors.white),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                Icon(icon, size: 16, color: Colors.white),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 12,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-                      ),
-                    ),
+        ),
+      ),
     );
   }
 
