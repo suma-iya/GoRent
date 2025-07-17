@@ -1599,36 +1599,11 @@ func SendTenantRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate notification ID
-	notificationID, err := utils.GenerateRandomID()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(TenantRequestResponse{false, "Error generating notification ID"})
-		return
-	}
-
 	// Create notification message
 	message := fmt.Sprintf("Tenant request for %s - %s", propertyName, floorName)
 
-	// Insert notification
-	_, err = db.Exec(`
-		INSERT INTO notification (
-			id, message, sender, receiver, pid, fid,
-			status, created_at, created_by, updated_at, updated_by
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		notificationID,
-		message,
-		userID,
-		tenantID,
-		propertyID,
-		floorID,
-		"pending",
-		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-		userID,
-		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-		userID,
-	)
-
+	// Create notification with push notification
+	err = SendNotificationWithPush(userID, tenantID, propertyID, floorID, message, "pending", nil)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(TenantRequestResponse{false, "Error creating notification"})
@@ -2470,13 +2445,8 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Generate new notification ID for the auto-generated response
-	newNotificationID, err := utils.GenerateRandomID()
-	if err != nil {
-		fmt.Printf("Error generating notification ID: %v\n", err)
-		// Don't fail the whole request, just log the error
-		fmt.Printf("Failed to create auto-response notification")
-	} else {
+	// Create auto-generated response notification
+	{
 		// Create auto-generated response notification
 		var responseMessage string
 		if isPaymentNotification {
@@ -2532,32 +2502,14 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 		responseSender := notification.Receiver // Person who accepted/rejected
 		responseReceiver := notification.Sender // Original sender of the request
 		
-		_, err = db.Exec(`
-			INSERT INTO notification (
-				id, message, sender, receiver, pid, fid, status, comment,
-				created_at, created_by, updated_at, updated_by
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`,
-		newNotificationID,
-		responseMessage,
-		responseSender,
-		responseReceiver,
-		notification.PID,
-		notification.FloorID,
-		newStatus,
-		nil, // No comment initially - let users add comments to this response
-		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-		userID,
-		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-		userID,
-		)
-
+		// Create auto-response notification with push notification
+		err = SendNotificationWithPush(responseSender, responseReceiver, notification.PID, notification.FloorID, responseMessage, newStatus, nil)
 		if err != nil {
 			fmt.Printf("Error creating auto-response notification: %v\n", err)
 			// Don't fail the whole request, just log the error
 		} else {
-			fmt.Printf("Created auto-response notification: ID=%d, Message='%s', from user=%d to user=%d", 
-				newNotificationID, responseMessage, responseSender, responseReceiver)
+			fmt.Printf("Created auto-response notification with push: Message='%s', from user=%d to user=%d", 
+				responseMessage, responseSender, responseReceiver)
 		}
 	}
 
@@ -2956,20 +2908,10 @@ func SendPaymentNotificationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insert notification with all required fields
-	_, err = db.Exec(`
-		INSERT INTO notification (
-			id, message, sender, receiver, pid, fid, status, 
-			created_at, created_by, updated_at, updated_by
-		) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
-	`, notificationID, message, userID, managerID, propertyID, floorID,
-	   time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-	   userID,
-	   time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02"),
-	   userID)
-	
+	// Create notification with push notification
+	err = SendNotificationWithPush(userID, managerID, propertyID, floorID, message, "pending", nil)
 	if err != nil {
-		log.Printf("Error inserting notification: %v", err)
+		log.Printf("Error creating notification: %v", err)
 		http.Error(w, "Failed to send notification", http.StatusInternalServerError)
 		return
 	}
@@ -3570,27 +3512,8 @@ func SendCommentHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Insert the new notification
-	_, err = tx.Exec(`
-		INSERT INTO notification (
-			id, message, sender, receiver, pid, fid, status, comment,
-			created_at, created_by, updated_at, updated_by
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`,
-		newNotificationID,
-		newMessage,
-		newSender,
-		newReceiver,
-		originalNotification.PID,
-		originalNotification.FloorID,
-		newStatus,
-		nil, // Don't set comment on new notification - let it be NULL so "Add Comment" button shows
-		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-		userID,
-		time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-		userID,
-	)
-
+	// Create notification with push notification (outside transaction since SendNotificationWithPush manages its own DB connection)
+	err = SendNotificationWithPush(newSender, newReceiver, originalNotification.PID, originalNotification.FloorID, newMessage, newStatus, nil)
 	if err != nil {
 		fmt.Printf("Error creating notification: %v\n", err)
 		http.Error(w, "Failed to create notification", http.StatusInternalServerError)
@@ -3997,12 +3920,7 @@ func CreateAdvancePaymentRequestHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Create notification for the advance payment request
-	notificationID, err := utils.GenerateRandomID()
-	if err != nil {
-		fmt.Printf("Error generating notification ID: %v\n", err)
-		// Don't fail the entire request if notification creation fails
-		fmt.Printf("Failed to create notification for advance payment")
-	} else {
+	{
 		// Create notification message with payment amount and month name
 		monthNames := []string{
 			"", "January", "February", "March", "April", "May", "June",
@@ -4011,32 +3929,14 @@ func CreateAdvancePaymentRequestHandler(w http.ResponseWriter, r *http.Request) 
 		monthName := monthNames[req.Month]
 		message := fmt.Sprintf("Advance payment request: %d tk for %s", req.Money, monthName)
 
-		// Insert notification
-		_, err = db.Exec(`
-			INSERT INTO notification (
-				id, message, sender, receiver, pid, fid,
-				status, created_at, created_by, updated_at, updated_by, is_read
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			notificationID,
-			message,
-			userID, // sender (manager)
-			req.AdvanceUID, // receiver (tenant)
-			propertyID,
-			floorID,
-			"pending",
-			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-			userID,
-			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-			userID,
-			false, // is_read initially false
-		)
-
+		// Create notification with push notification
+		err = SendNotificationWithPush(userID, req.AdvanceUID, propertyID, floorID, message, "pending", nil)
 		if err != nil {
 			fmt.Printf("Error creating notification: %v\n", err)
 			// Don't fail the entire request if notification creation fails
 			fmt.Printf("Failed to create notification for advance payment")
 		} else {
-			fmt.Printf("Successfully created notification ID: %d for advance payment request", notificationID)
+			fmt.Printf("Successfully created notification with push for advance payment request")
 		}
 	}
 

@@ -85,6 +85,16 @@ func main() {
 	protectedRouter.HandleFunc("/notifications/send-comment", handlers.SendCommentHandler).Methods("POST")
 	protectedRouter.HandleFunc("/notifications/conversation", handlers.GetConversationHistoryHandler).Methods("GET")
 
+	// FCM token routes
+	protectedRouter.HandleFunc("/user/fcm-token", handlers.UpdateFCMTokenHandler).Methods("POST")
+	
+	// Public test endpoints
+	router.HandleFunc("/test/fcm-connection-public", handlers.TestFCMConnectionPublicHandler).Methods("GET")
+	
+	// Test endpoints
+	protectedRouter.HandleFunc("/test/fcm-connection", handlers.TestFCMConnectionHandler).Methods("GET")
+	protectedRouter.HandleFunc("/test/push-notification", handlers.TestPushNotificationHandler).Methods("POST")
+
 	// New payment notification route
 	protectedRouter.HandleFunc("/property/{id:[0-9]+}/floor/{floor_id:[0-9]+}/payment-notification", handlers.SendPaymentNotificationHandler).Methods("POST")
 

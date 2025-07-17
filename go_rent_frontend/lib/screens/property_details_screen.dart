@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../models/property.dart';
 import '../models/floor.dart';
 import '../services/api_service.dart';
-import 'notifications_screen.dart';
 import 'pending_payment_notifications_screen.dart';
 import 'payment_screen.dart';
 import '../utils/app_localizations.dart';
@@ -24,7 +23,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   String? _error;
   List<Floor> _floors = [];
   Property? _property;
-  int _unreadNotifications = 0;
   bool _isManager = false;
 
   // Modern color schemes
@@ -65,19 +63,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       setState(() {}); // Rebuild to update UI with loaded userId
     });
     _loadPropertyDetails();
-    _loadNotifications();
   }
 
-  Future<void> _loadNotifications() async {
-    try {
-      final notifications = await _apiService.getNotifications();
-      setState(() {
-        _unreadNotifications = notifications.where((n) => !n.isRead).length;
-      });
-    } catch (e) {
-      print('Error loading notifications: $e');
-    }
-  }
+
 
   Future<void> _loadPropertyDetails() async {
     setState(() {
@@ -912,50 +900,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
             ),
           ),
         ),
-        actions: [
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications),
-                onPressed: () async {
-                  // Navigate to notifications screen without marking as read immediately
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationsScreen(),
-                    ),
-                  );
-                  // Reload notifications to update unread count after returning
-                  _loadNotifications();
-                },
-              ),
-              if (_unreadNotifications > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: BoxDecoration(
-                      color: Colors.red,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$_unreadNotifications',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
+        actions: [],
       ),
       body: SafeArea(
         child: _isLoading

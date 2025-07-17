@@ -5,9 +5,15 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/localization_service.dart';
+import 'services/notification_service.dart';
 import 'utils/app_localizations.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize notification service
+  await NotificationService.initialize();
+  
   runApp(const MyApp());
 }
 

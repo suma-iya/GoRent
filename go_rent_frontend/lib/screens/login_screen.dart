@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'properties_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -48,6 +49,15 @@ class _LoginScreenState extends State<LoginScreen> {
         final userId = loginResult['user_id'];
         await _apiService.setCurrentUserId(userId);
         print('Set current user ID to: $userId');
+        
+        // Send FCM token to server after successful login
+        try {
+          await NotificationService.sendCurrentTokenToServer();
+          print('FCM token sent to server after login');
+        } catch (e) {
+          print('Error sending FCM token after login: $e');
+        }
+        
         // Navigate to properties screen on success
         Navigator.pushAndRemoveUntil(
           context,

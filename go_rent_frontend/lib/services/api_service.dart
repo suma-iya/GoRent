@@ -139,8 +139,8 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success']) {
-          final List<dynamic> propertiesJson = data['properties'];
-          return propertiesJson.map((json) => Property.fromJson(json)).toList();
+          final List<dynamic>? propertiesJson = data['properties'];
+          return propertiesJson?.map((json) => Property.fromJson(json)).toList() ?? [];
         } else {
           throw Exception(data['message'] ?? 'Failed to load properties');
         }
@@ -692,8 +692,8 @@ class ApiService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success']) {
-          final List<dynamic> propertiesJson = data['properties'];
-          return propertiesJson.map((json) => Property.fromJson(json)).toList();
+          final List<dynamic>? propertiesJson = data['properties'];
+          return propertiesJson?.map((json) => Property.fromJson(json)).toList() ?? [];
         } else {
           throw Exception(data['message'] ?? 'Failed to load properties');
         }
@@ -871,6 +871,72 @@ class ApiService {
       }
     } catch (e) {
       print('Error sending comment: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  // Test push notification
+  Future<bool> testPushNotification({
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      print('Testing push notification: $title - $body');
+      final response = await _client.post(
+        Uri.parse('$baseUrl/test/push-notification'),
+        headers: _headers,
+        body: json.encode({
+          'title': title,
+          'body': body,
+          if (data != null) 'data': data,
+        }),
+      );
+
+      print('Test notification response status: ${response.statusCode}');
+      print('Test notification response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        return responseData['success'] ?? false;
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error testing push notification: $e');
+      throw Exception('Error: $e');
+    }
+  }
+
+  // Update FCM token on server
+  Future<bool> updateFcmToken(String fcmToken) async {
+    try {
+      print('Updating FCM token: $fcmToken');
+      final response = await _client.post(
+        Uri.parse('$baseUrl/user/fcm-token'),
+        headers: _headers,
+        body: json.encode({
+          'fcm_token': fcmToken,
+        }),
+      );
+
+      print('FCM token update response status: ${response.statusCode}');
+      print('FCM token update response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        return data['success'] ?? false;
+      } else if (response.statusCode == 401) {
+        _sessionToken = null; // Clear invalid session token
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error updating FCM token: $e');
       if (e.toString().contains('SocketException')) {
         throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
       }

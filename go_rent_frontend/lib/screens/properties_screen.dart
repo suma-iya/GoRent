@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../models/property.dart';
 import '../services/api_service.dart';
 import '../services/localization_service.dart';
+import '../services/notification_service.dart';
 import '../utils/app_localizations.dart';
 import 'property_details_screen.dart';
 import 'notifications_screen.dart';
@@ -72,6 +73,15 @@ class _PropertiesScreenState extends State<PropertiesScreen>
 
   Future<void> _initialize() async {
     await _apiService.loadSessionToken();
+    
+    // Send FCM token to server
+    try {
+      await NotificationService.sendCurrentTokenToServer();
+      print('FCM token sent to server in properties screen');
+    } catch (e) {
+      print('Error sending FCM token in properties screen: $e');
+    }
+    
     _loadProperties();
     _loadNotifications();
   }
