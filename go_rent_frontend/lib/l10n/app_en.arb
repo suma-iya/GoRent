@@ -118,7 +118,7 @@
   "notifications": "Notifications",
   "requestPending": "Request Pending",
   "tapToView": "Tap to view",
-  'monthJanuary": "January",
+  "monthJanuary": "January",
   "monthFebruary": "February",
   "monthMarch": "March",
   "monthApril": "April",
@@ -133,9 +133,26 @@
   "month": "month",
   "enterAdvancePaymentAmount": "Enter advance payment amount",
   "currency": "tk/month",
-  
+  "settings": "Settings",
+  "pushNotifications": "Push Notifications",
+  "pushNotificationsDescription": "Receive notifications for rent reminders, payments, and tenant requests",
+  "pushNotificationsEnabled": "Push notifications enabled",
+  "pushNotificationsDisabled": "Push notifications disabled",
+  "appInformation": "App Information",
+  "appInformationDescription": "Information about the Go Rent application",
+  "appVersion": "App Version",
+  "buildNumber": "Build Number",
+  "lastUpdated": "Last Updated",
+  "error": "Error: {message}",
+  "@error": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
 
-      "paymentDetails": "Payment details",
+  "paymentDetails": "Payment details",
       "tk": "tk",
       "adjustDueRent": "Adjust due rent",
       "subtract": "Subtract",

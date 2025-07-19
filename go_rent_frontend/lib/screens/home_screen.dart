@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../models/property.dart';
 import '../screens/property_details_screen.dart';
 import '../screens/notifications_screen.dart';
@@ -169,12 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 icon: const Icon(Icons.notifications),
                 onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NotificationsScreen(),
-                    ),
-                  );
+                      await Navigator.pushNamed(context, '/notifications');
                   _loadNotifications();
                 },
               ),

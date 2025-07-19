@@ -5,6 +5,7 @@ import '../models/floor.dart';
 import '../services/api_service.dart';
 import 'pending_payment_notifications_screen.dart';
 import 'payment_screen.dart';
+import 'advance_details_screen.dart';
 import '../utils/app_localizations.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
@@ -621,26 +622,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Future<void> _showAdvancePaymentDialog(Floor floor) async {
     final phoneController = TextEditingController();
     final moneyController = TextEditingController();
-    int? selectedMonth;
     List<String> allPhones = [];
     List<String> filteredPhones = [];
     bool isLoading = false;
-    
-    // Month options
-    final List<Map<String, dynamic>> monthOptions = [
-      {'value': 1, 'label': AppLocalizations.of(context).monthJanuary},
-      {'value': 2, 'label': AppLocalizations.of(context).monthFebruary},
-      {'value': 3, 'label': AppLocalizations.of(context).monthMarch},
-      {'value': 4, 'label': AppLocalizations.of(context).monthApril},
-      {'value': 5, 'label': AppLocalizations.of(context).monthMay},
-      {'value': 6, 'label': AppLocalizations.of(context).monthJune},
-      {'value': 7, 'label': AppLocalizations.of(context).monthJuly},
-      {'value': 8, 'label': AppLocalizations.of(context).monthAugust},
-      {'value': 9, 'label': AppLocalizations.of(context).monthSeptember},
-      {'value': 10, 'label': AppLocalizations.of(context).monthOctober},
-      {'value': 11, 'label': AppLocalizations.of(context).monthNovember},
-      {'value': 12, 'label': AppLocalizations.of(context).monthDecember},
-    ];
     
     return showDialog(
       context: context,
@@ -735,27 +719,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     ),
                     keyboardType: TextInputType.number,
                   ),
-                  const SizedBox(height: 12),
-                  // Month dropdown
-                  DropdownButtonFormField<int>(
-                    value: selectedMonth,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context).month,
-                      border: const OutlineInputBorder(),
-                    ),
-                    hint: Text(AppLocalizations.of(context).selectMonth),
-                    items: monthOptions.map((month) {
-                      return DropdownMenuItem<int>(
-                        value: month['value'],
-                        child: Text(month['label']),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedMonth = value;
-                      });
-                    },
-                  ),
+
                 ],
               ),
             ),
@@ -781,12 +745,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     return;
                   }
                   
-                  if (selectedMonth == null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppLocalizations.of(context).pleaseSelectMonth)),
-                    );
-                    return;
-                  }
+
                   
                   try {
                     // Get user ID from phone number
@@ -797,7 +756,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                       floorId: floor.id,
                       advanceUid: userId,
                       money: money,
-                      month: selectedMonth!,
                     );
                     
                     if (success) {
@@ -964,7 +922,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                               ? _themeColor
                               : actualStatus == 'pending'
                                   ? Colors.orange
-                                  : _themeColor.withOpacity(0.7);
+                                  : Color.fromARGB(255, 118, 221, 235); // Make available status green
                           return Container(
                             margin: const EdgeInsets.only(bottom: 20),
                             decoration: BoxDecoration(
@@ -1071,6 +1029,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                   ],
                                                 ),
                                                 const SizedBox(height: 6),
+                                                // Rent information
                                                 Row(
                                                   children: [
                                                     Icon(
@@ -1091,6 +1050,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                     ),
                                                   ],
                                                 ),
+                                                // Tenant information
                                                 if (floor.tenant != null) ...[
                                                   const SizedBox(height: 4),
                                                   Row(
@@ -1110,10 +1070,47 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                                                           ),
                                                           overflow: TextOverflow.ellipsis,
                                                         ),
-                                        ),
-                                    ],
-                                  ),
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ],
+                                                // Advance details button
+                                                const SizedBox(height: 8),
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => AdvanceDetailsScreen(
+                                                          floorName: floor.name,
+                                                          floorId: floor.id,
+                                                          themeColor: themeColor,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.account_balance_wallet_rounded,
+                                                        size: 16,
+                                                        color: themeColor,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Expanded(
+                                                        child: Text(
+                                                          AppLocalizations.of(context).showAdvanceDetails,
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: themeColor,
+    
+                                                          ),
+                                                          overflow: TextOverflow.ellipsis,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                                 if (actualStatus == 'pending') ...[
                                                   const SizedBox(height: 4),
                                                   Row(

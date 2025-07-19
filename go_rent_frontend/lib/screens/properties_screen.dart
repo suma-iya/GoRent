@@ -12,6 +12,7 @@ import '../services/notification_service.dart';
 import '../utils/app_localizations.dart';
 import 'property_details_screen.dart';
 import 'notifications_screen.dart';
+import 'settings_screen.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({Key? key}) : super(key: key);
@@ -48,6 +49,11 @@ class _PropertiesScreenState extends State<PropertiesScreen>
     super.initState();
     _setupAnimations();
     _initialize();
+    
+    // Set up notification count callback
+    NotificationService.setNotificationCountCallback(() {
+      _loadNotifications();
+    });
   }
 
   void _setupAnimations() {
@@ -66,6 +72,8 @@ class _PropertiesScreenState extends State<PropertiesScreen>
 
   @override
   void dispose() {
+    // Clear notification count callback
+    NotificationService.clearNotificationCountCallback();
     _fabAnimationController.dispose();
     _listAnimationController.dispose();
     super.dispose();
@@ -84,7 +92,14 @@ class _PropertiesScreenState extends State<PropertiesScreen>
     
     _loadProperties();
     _loadNotifications();
+    
+    // Handle any pending initial notification message
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService.handlePendingInitialMessage();
+    });
   }
+
+
 
   Future<void> _loadNotifications() async {
     try {
@@ -1136,7 +1151,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DrawerHeader(
+             DrawerHeader(
                 decoration: BoxDecoration(
                   color: currentColor,
                 ),
@@ -1207,7 +1222,20 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                   _loadNotifications();
                 },
               ),
-              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.settings_rounded, color: Colors.grey),
+                title: const Text('Settings'),
+                onTap: () async {
+                  Navigator.pop(context); // Close drawer
+                  HapticFeedback.lightImpact();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
               ListTile(
                 leading: const Icon(Icons.language_rounded, color: Colors.blueAccent),
                 title: Text('Language (' + (Provider.of<LocalizationService>(context).currentLocale.languageCode == 'bn' ? 'বাংলা' : 'English') + ')'),

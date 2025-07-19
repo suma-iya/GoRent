@@ -58,6 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
           print('Error sending FCM token after login: $e');
         }
         
+        // Clear any pending initial notification message
+        NotificationService.clearPendingInitialMessage();
+        
         // Navigate to properties screen on success
         Navigator.pushAndRemoveUntil(
           context,

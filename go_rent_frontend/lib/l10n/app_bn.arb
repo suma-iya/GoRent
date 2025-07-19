@@ -118,7 +118,6 @@
   "notifications": "বিজ্ঞপ্তি",
   "requestPending": "অনুরোধ অপেক্ষমাণ",
   "tapToView": "দেখতে ট্যাপ করুন",
-  {
   "monthJanuary": "জানুয়ারি",
   "monthFebruary": "ফেব্রুয়ারি",
   "monthMarch": "মার্চ",
@@ -132,10 +131,28 @@
   "monthNovember": "নভেম্বর",
   "monthDecember": "ডিসেম্বর",
   "month": "মাস",
-  "enterAdvancePaymentAmount": "অ্যাডভান্স পরিশোধের পরিমাণ লিখুন"
-  "currency" : "টাকা/মাসে",
+  "enterAdvancePaymentAmount": "অ্যাডভান্স পরিশোধের পরিমাণ লিখুন",
+  "currency": "টাকা/মাসে",
+  "settings": "সেটিংস",
+  "pushNotifications": "পুশ বিজ্ঞপ্তি",
+  "pushNotificationsDescription": "ভাড়ার রিমাইন্ডার, পেমেন্ট এবং ভাড়াটিয়া অনুরোধের জন্য বিজ্ঞপ্তি পান",
+  "pushNotificationsEnabled": "পুশ বিজ্ঞপ্তি সক্রিয়",
+  "pushNotificationsDisabled": "পুশ বিজ্ঞপ্তি নিষ্ক্রিয়",
+  "appInformation": "অ্যাপ তথ্য",
+  "appInformationDescription": "গো রেন্ট অ্যাপ্লিকেশন সম্পর্কে তথ্য",
+  "appVersion": "অ্যাপ সংস্করণ",
+  "buildNumber": "বিল্ড নম্বর",
+  "lastUpdated": "সর্বশেষ আপডেট",
+  "error": "ত্রুটি: {message}",
+  "@error": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
 
-      "paymentDetails": "পেমেন্টের বিবরণ",
+  "paymentDetails": "পেমেন্টের বিবরণ",
       "tk": "টাকা",
       "adjustDueRent": "বকেয়া ভাড়া সমন্বয় করুন",
       "subtract": "বিয়োগ করুন",
@@ -165,9 +182,3 @@
       "successfully": "সফলভাবে",
       "subtractAmount": "পরিমাণ বিয়োগ করুন"
 }
-
-  
-
-}
-
-} 

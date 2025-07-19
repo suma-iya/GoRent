@@ -208,6 +208,11 @@ func TestPushNotificationHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Ensure the data contains navigation information
+	if request.Data["type"] == nil {
+		request.Data["type"] = "test"
+	}
+
 	// Send push notification
 	err := SendPushNotification(userID, request.Title, request.Body, request.Data)
 	if err != nil {
@@ -288,24 +293,50 @@ func SendNotificationWithPush(senderID, receiverID, propertyID, floorID int64, m
 		return fmt.Errorf("failed to create notification in database: %v", err)
 	}
 
+	// Get property and floor names for better push notification titles
+	var propertyName, floorName string
+	err = db.QueryRow("SELECT p.name, f.name FROM property p JOIN floor f ON p.id = f.pid WHERE p.id = ? AND f.id = ?", propertyID, floorID).Scan(&propertyName, &floorName)
+	if err != nil {
+		// If we can't get property/floor names, use generic names
+		propertyName = "Property"
+		floorName = "Floor"
+	}
+
 	// Send push notification
-	title := "New Notification"
+
+	title := ""
 	body := message
 	
-	// Customize title based on notification type
+	// Customize title based on notification type with property and floor info
 	if strings.Contains(message, "Tenant request") {
-		title = "New Tenant Request"
+		title = fmt.Sprintf("New Tenant Request - %s %s", propertyName, floorName)
 	} else if strings.Contains(message, "Payment amount") {
-		title = "Payment Notification"
+		title = fmt.Sprintf("Payment Notification - %s %s", propertyName, floorName)
 	} else if strings.Contains(message, "Advance payment") {
-		title = "Advance Payment Request"
+		title = fmt.Sprintf("Advance Payment Request - %s %s", propertyName, floorName)
 	} else if strings.Contains(message, "accepted") || strings.Contains(message, "rejected") {
-		title = "Request Update"
+		title = fmt.Sprintf("Request Update - %s %s", propertyName, floorName)
+	} else if strings.Contains(message, "Monthly rent reminder") {
+		title = fmt.Sprintf("Monthly Rent Reminder - %s %s", propertyName, floorName)
+	} else {
+		title = fmt.Sprintf("New Notification! - %s %s", propertyName, floorName)
+	}
+
+	// Determine notification type based on message content
+	notificationType := "notification"
+	if strings.Contains(message, "Monthly rent reminder") {
+		notificationType = "monthly_reminder"
+	} else if strings.Contains(message, "Payment amount") {
+		notificationType = "payment"
+	} else if strings.Contains(message, "Advance payment") {
+		notificationType = "advance_payment"
+	} else if strings.Contains(message, "Tenant request") {
+		notificationType = "tenant_request"
 	}
 
 	data := map[string]interface{}{
 		"notification_id": fmt.Sprintf("%d", notificationID),
-		"type":            "notification",
+		"type":            notificationType,
 		"property_id":     fmt.Sprintf("%d", propertyID),
 		"floor_id":        fmt.Sprintf("%d", floorID),
 		"timestamp":       fmt.Sprintf("%d", time.Now().Unix()),

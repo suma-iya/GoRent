@@ -3,10 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/properties_screen.dart';
+import 'screens/notifications_screen.dart';
 import 'services/localization_service.dart';
 import 'services/notification_service.dart';
 import 'utils/app_localizations.dart';
+
+// Global navigation key for handling notification navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,6 +34,7 @@ class MyApp extends StatelessWidget {
       child: Consumer<LocalizationService>(
         builder: (context, localizationService, child) {
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: 'Go Rent',
             theme: ThemeData(
               colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
@@ -45,7 +50,8 @@ class MyApp extends StatelessWidget {
             routes: {
               '/login': (context) => const LoginScreen(),
               '/register': (context) => const RegisterScreen(),
-              '/home': (context) => const HomeScreen(),
+              '/home': (context) => const PropertiesScreen(),
+              '/notifications': (context) => const NotificationsScreen(),
             },
           );
         },

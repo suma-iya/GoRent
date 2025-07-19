@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'api_service.dart';
 import '../firebase_options.dart';
+import '../main.dart';
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -13,6 +14,7 @@ class NotificationService {
   
   static String? _fcmToken;
   static bool _isInitialized = false;
+  static RemoteMessage? _pendingInitialMessage;
 
   // Getter for FCM token
   static String? get fcmToken => _fcmToken;
@@ -67,7 +69,16 @@ class NotificationService {
       // Check if app was opened from notification
       RemoteMessage? initialMessage = await _firebaseMessaging.getInitialMessage();
       if (initialMessage != null) {
-        _handleNotificationTap(initialMessage);
+        print('App opened from notification: ${initialMessage.data}');
+        // Store the initial message to handle after app is fully loaded
+        _pendingInitialMessage = initialMessage;
+        // Delay navigation to ensure app is fully initialized
+        Future.delayed(const Duration(seconds: 3), () {
+          if (_pendingInitialMessage != null) {
+            _handleNotificationTap(_pendingInitialMessage!);
+            _pendingInitialMessage = null;
+          }
+        });
       }
 
       _isInitialized = true;
@@ -146,14 +157,146 @@ class NotificationService {
 
   // Navigate based on notification data
   static void _navigateBasedOnNotification(Map<String, dynamic> data) {
-    // You can implement navigation logic here based on notification type
-    // For example:
-    // if (data['type'] == 'payment') {
-    //   // Navigate to payment screen
-    // } else if (data['type'] == 'notification') {
-    //   // Navigate to notifications screen
-    // }
     print('Navigate based on notification type: ${data['type']}');
+    print('Notification data: $data');
+    
+    // Check if user is logged in (has navigator context)
+    if (navigatorKey.currentContext == null) {
+      print('No navigator context available, cannot navigate');
+      return;
+    }
+    
+    print('Navigator context available, current route: ${ModalRoute.of(navigatorKey.currentContext!)?.settings.name}');
+    
+    try {
+      // Get current route
+      final currentRoute = ModalRoute.of(navigatorKey.currentContext!);
+      final currentRouteName = currentRoute?.settings.name;
+      
+      print('Current route name: $currentRouteName');
+      
+      // If we're on login or register screen, don't navigate (user not logged in)
+      if (currentRouteName == '/login' || currentRouteName == '/register') {
+        print('User not logged in, skipping notification navigation');
+        return;
+      }
+      
+      // If we're already on notifications screen, do nothing
+      if (currentRouteName == '/notifications') {
+        print('Already on notifications screen');
+        return;
+      }
+      
+      // If we're on home screen, navigate directly to notifications
+      if (currentRouteName == '/home') {
+        print('On home screen, navigating directly to notifications');
+        _navigateToNotificationScreen();
+        return;
+      }
+      
+      // If we're not on home screen and not on login/register, navigate to home first
+      if (currentRouteName != '/login' && currentRouteName != '/register') {
+        print('Not on home screen, navigating to home first');
+        navigatorKey.currentState?.pushReplacementNamed('/home');
+        // Then navigate to notifications after a short delay
+        Future.delayed(const Duration(milliseconds: 300), () {
+          _navigateToNotificationScreen();
+        });
+        return;
+      }
+    } catch (e) {
+      print('Error navigating from notification: $e');
+    }
+  }
+  
+  // Helper method to navigate to notification screen
+  static void _navigateToNotificationScreen() {
+    try {
+      // Check if we're already on notifications screen
+      final currentRoute = ModalRoute.of(navigatorKey.currentContext!);
+      if (currentRoute?.settings.name == '/notifications') {
+        print('Already on notifications screen, skipping navigation');
+        return;
+      }
+      
+      print('Navigating to notifications screen');
+      navigatorKey.currentState?.pushNamed('/notifications');
+    } catch (e) {
+      print('Error navigating to notification screen: $e');
+    }
+  }
+  
+  // Public method to handle pending initial message after app is ready
+  static void handlePendingInitialMessage() {
+    if (_pendingInitialMessage != null) {
+      print('Handling pending initial message');
+      _handleNotificationTap(_pendingInitialMessage!);
+      _pendingInitialMessage = null;
+    }
+  }
+
+  // Callback to refresh notification count when returning from notifications screen
+  static Function? _onNotificationCountChanged;
+
+  // Set callback for notification count changes
+  static void setNotificationCountCallback(Function callback) {
+    _onNotificationCountChanged = callback;
+  }
+
+  // Clear callback
+  static void clearNotificationCountCallback() {
+    _onNotificationCountChanged = null;
+  }
+
+  // Notify that notification count should be refreshed
+  static void notifyNotificationCountChanged() {
+    if (_onNotificationCountChanged != null) {
+      _onNotificationCountChanged!();
+    }
+  }
+
+  // Request notification permission
+  static Future<bool> requestPermission() async {
+    try {
+      NotificationSettings settings = await _firebaseMessaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+      
+      print('Permission request result: ${settings.authorizationStatus}');
+      return settings.authorizationStatus == AuthorizationStatus.authorized;
+    } catch (e) {
+      print('Error requesting permission: $e');
+      return false;
+    }
+  }
+
+  // Clear FCM token from server
+  static Future<void> clearTokenFromServer() async {
+    try {
+      final apiService = ApiService();
+      await apiService.loadSessionToken();
+      
+      // Send empty token to server to disable notifications
+      await apiService.updateFcmToken('');
+      print('FCM token cleared from server');
+    } catch (e) {
+      print('Error clearing FCM token from server: $e');
+      throw e;
+    }
+  }
+  
+  // Public method to clear pending initial message
+  static void clearPendingInitialMessage() {
+    if (_pendingInitialMessage != null) {
+      print('Clearing pending initial message');
+      _pendingInitialMessage = null;
+    }
   }
 
   // Handle background messages
@@ -182,8 +325,11 @@ class NotificationService {
   static void _handleNotificationTap(RemoteMessage message) {
     print('Notification tapped: ${message.data}');
     
-    // Navigate based on notification type
-    _navigateBasedOnNotification(message.data);
+    // Add a small delay to ensure the app is fully loaded
+    Future.delayed(const Duration(milliseconds: 100), () {
+      // Navigate based on notification type
+      _navigateBasedOnNotification(message.data);
+    });
   }
 
   // Show local notification
@@ -212,7 +358,7 @@ class NotificationService {
 
     await _localNotifications.show(
       message.hashCode,
-      message.notification?.title ?? 'New Notification',
+      message.notification?.title ?? 'Go Rent',
       message.notification?.body ?? '',
       platformChannelSpecifics,
       payload: json.encode(message.data),

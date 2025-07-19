@@ -72,6 +72,9 @@ func main() {
 	// Advance payment check and cancel routes
 	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-payment/check", handlers.CheckPendingAdvancePaymentHandler).Methods("GET")
 	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-payment", handlers.CancelAdvancePaymentHandler).Methods("DELETE")
+	
+	// Advance details route
+	protectedRouter.HandleFunc("/floor/{floor_id:[0-9]+}/advance-details", handlers.GetAdvanceDetailsHandler).Methods("GET")
 
 	// User routes
 	protectedRouter.HandleFunc("/users/phones", handlers.GetUserPhonesHandler).Methods("GET")

@@ -986,7 +986,6 @@ class ApiService {
     required int floorId,
     required int advanceUid,
     required int money,
-    required int month,
   }) async {
     try {
       print('Creating advance payment request for property: $propertyId, floor: $floorId');
@@ -996,7 +995,6 @@ class ApiService {
         body: json.encode({
           'advance_uid': advanceUid,
           'money': money,
-          'month': month,
         }),
       );
 
@@ -1072,6 +1070,40 @@ class ApiService {
       }
     } catch (e) {
       print('Error canceling advance payment request: $e');
+      if (e.toString().contains('SocketException')) {
+        throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
+      }
+      throw Exception('Error: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getAdvanceDetails(int floorId) async {
+    try {
+      print('Fetching advance details for floor: $floorId');
+      final response = await _client.get(
+        Uri.parse('$baseUrl/floor/$floorId/advance-details'),
+        headers: _headers,
+      );
+
+      print('Response status code: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        if (data['success']) {
+          final List<dynamic> advancesJson = data['advances'] ?? [];
+          return advancesJson.map((json) => Map<String, dynamic>.from(json)).toList();
+        } else {
+          throw Exception(data['message'] ?? 'Failed to load advance details');
+        }
+      } else if (response.statusCode == 401) {
+        _sessionToken = null; // Clear invalid session token
+        throw Exception('Session expired. Please login again.');
+      } else {
+        throw Exception('Server returned status code ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching advance details: $e');
       if (e.toString().contains('SocketException')) {
         throw Exception('Could not connect to server. Please check if the server is running and you have internet connection.');
       }

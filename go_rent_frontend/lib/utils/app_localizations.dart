@@ -85,7 +85,7 @@ class AppLocalizations {
       'cancelRequestConfirmation': 'Are you sure you want to cancel this tenant request?',
       'paymentAmount': 'Payment Amount',
       'paymentAmountHint': 'Enter payment amount',
-      'electricityBill': 'Electricity Bill (Optional)',
+      'electricityBill': 'Electricity Bill',
       'electricityBillHint': 'Enter electricity bill amount to pay',
       'advanceAmount': 'Amount',
       'advanceAmountHint': 'Enter advance payment amount',
@@ -137,6 +137,10 @@ class AppLocalizations {
       'yesCancelAdvancePaymentRequest': 'Yes, Cancel',
       'noFloorsAddedYet': 'No floors added yet',
       'enterAdvancePaymentAmount': 'Enter advance payment amount',
+  'showAdvanceDetails': 'Show Advance Details',
+  'advanceDetails': 'Advance Details',
+  'noAdvanceDetails': 'No advance details found for this floor',
+  'advanceDetailsForFloor': 'Advance Details for {floorName}',
       'currency': 'tk/month',
 
       "paymentDetails": "Payment details",
@@ -144,7 +148,7 @@ class AppLocalizations {
       "adjustDueRent": "Adjust due rent",
       "subtract": "Subtract",
       "rentAmount": "Rent amount",
-      "electricityBillOptional": "Electricity bill (optional)",
+      "electricityBillOptional": "Electricity bill",
       "preview": "Preview",
       "current": "Current",
       "newTotal": "New total",
@@ -253,7 +257,7 @@ class AppLocalizations {
       'cancelRequestConfirmation': 'আপনি কি নিশ্চিত যে আপনি এই ভাড়াটে অনুরোধ বাতিল করতে চান?',
       'paymentAmount': 'পেমেন্ট পরিমাণ',
       'paymentAmountHint': 'পেমেন্ট পরিমাণ লিখুন',
-      'electricityBill': 'বিদ্যুৎ বিল (ঐচ্ছিক)',
+      'electricityBill': 'বিদ্যুৎ বিল',
       'electricityBillHint': 'পরিশোধ করার বিদ্যুৎ বিলের পরিমাণ লিখুন',
       'advanceAmount': 'পরিমাণ',
       'advanceAmountHint': 'অগ্রিম পেমেন্টের পরিমাণ লিখুন',
@@ -305,13 +309,17 @@ class AppLocalizations {
       'yesCancelAdvancePaymentRequest': 'হ্যাঁ, বাতিল করুন',
       'noFloorsAddedYet': 'এখনও কোন ফ্লোর যোগ করা হয়নি',
       'enterAdvancePaymentAmount': 'অগ্রিম পেমেন্টের পরিমাণ লিখুন',
+  'showAdvanceDetails': 'অগ্রিম বিবরণ দেখুন',
+  'advanceDetails': 'অগ্রিম বিবরণ',
+  'noAdvanceDetails': 'এই ফ্লোরের জন্য কোন অগ্রিম বিবরণ পাওয়া যায়নি',
+  'advanceDetailsForFloor': '{floorName} এর অগ্রিম বিবরণ',
       'currency' : 'টাকা/মাসে',
       "paymentDetails": "পেমেন্টের বিবরণ",
       "tk": "টাকা",
       "adjustDueRent": "বকেয়া ভাড়া সমন্বয় করুন",
       "subtract": "বিয়োগ করুন",
       "rentAmount": "ভাড়ার পরিমাণ",
-      "electricityBillOptional": "বিদ্যুত বিল (ঐচ্ছিক)",
+      "electricityBillOptional": "বিদ্যুত বিল",
       "preview": "পূর্বরূপ দেখুন",
       "current": "বর্তমান",
       "newTotal": "নতুন মোট",
@@ -491,6 +499,10 @@ class AppLocalizations {
   String get monthNovember => get('november');
   String get monthDecember => get('december');
   String get enterAdvancePaymentAmount => get('enterAdvancePaymentAmount');
+  String get showAdvanceDetails => get('showAdvanceDetails');
+  String get advanceDetails => get('advanceDetails');
+  String get noAdvanceDetails => get('noAdvanceDetails');
+  String get advanceDetailsForFloor => get('advanceDetailsForFloor');
   String get currency => get('currency');
   String get paymentDetails => get('paymentDetails');
   String get tk => get('tk');

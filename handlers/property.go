@@ -156,7 +156,6 @@ type PaymentNotificationRequest struct {
 type AdvancePaymentRequest struct {
 	AdvanceUID int64 `json:"advance_uid"`
 	Money      int   `json:"money"`
-	Month      int   `json:"month"`
 }
 
 type AdvancePaymentResponse struct {
@@ -169,6 +168,21 @@ type AdvancePaymentCheckResponse struct {
 	Success     bool   `json:"success"`
 	Message     string `json:"message"`
 	HasPending  bool   `json:"has_pending"`
+}
+
+type AdvanceDetail struct {
+	ID        int64  `json:"id"`
+	AdvanceUID int64 `json:"advance_uid"`
+	UserName  string `json:"user_name"`
+	Money     int    `json:"money"`
+	CreatedAt string `json:"created_at"`
+	Status    string `json:"status"`
+}
+
+type AdvanceDetailsResponse struct {
+	Success bool            `json:"success"`
+	Message string          `json:"message"`
+	Advances []AdvanceDetail `json:"advances"`
 }
 
 type PaginationInfo struct {
@@ -1979,30 +1993,8 @@ func SendMonthlyNotifications() {
 			propertyName, floorName, rent,
 		)
 
-		// Generate notification ID
-		notificationID, err := utils.GenerateRandomID()
-		if err != nil {
-			fmt.Printf("Error generating notification ID: %v\n", err)
-			continue
-		}
-
-		// Insert notification
-		_, err = db.Exec(`
-			INSERT INTO notification (
-				id, message, sender, receiver, pid, fid, status, created_at, created_by, updated_at, updated_by
-			) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
-		`,
-			notificationID,
-			message,
-			managerID,
-			tenantID,
-			propertyID,
-			floorID,
-			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-			managerID,
-			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-			managerID,
-		)
+		// Create notification with push notification
+		err = SendNotificationWithPush(managerID, tenantID, propertyID, floorID, message, "", nil)
 		if err != nil {
 			fmt.Printf("Error creating notification: %v\n", err)
 			continue
@@ -2083,30 +2075,8 @@ func TestSendNotifications() {
 			propertyName, floorName, rent,
 		)
 
-		// Generate notification ID
-		notificationID, err := utils.GenerateRandomID()
-		if err != nil {
-			fmt.Printf("Error generating notification ID: %v\n", err)
-			continue
-		}
-
-		// Insert notification
-		_, err = db.Exec(`
-			INSERT INTO notification (
-				id, message, sender, receiver, pid, fid, status, created_at, created_by, updated_at, updated_by
-			) VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)
-		`,
-			notificationID,
-			message,
-			managerID,
-			tenantID,
-			propertyID,
-			floorID,
-			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-			managerID,
-			time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02 15:04:05"),
-			managerID,
-		)
+		// Create notification with push notification
+		err = SendNotificationWithPush(managerID, tenantID, propertyID, floorID, message, "", nil)
 		if err != nil {
 			fmt.Printf("Error creating notification: %v\n", err)
 			continue
@@ -2469,17 +2439,16 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		} else if isAdvancePaymentNotification {
-			// Extract amount and month from the original message for advance payment notifications
-			// Original message format: "Advance payment request: X tk for MonthName"
-			advanceRegex := regexp.MustCompile(`Advance payment request:\s*([0-9]+)\s*tk\s*for\s*([A-Za-z]+)`)
+			// Extract amount from the original message for advance payment notifications
+			// Original message format: "Advance payment request: X tk"
+			advanceRegex := regexp.MustCompile(`Advance payment request:\s*([0-9]+)\s*tk`)
 			matches := advanceRegex.FindStringSubmatch(notification.Message)
-			if len(matches) >= 3 {
+			if len(matches) >= 2 {
 				amount := matches[1]
-				monthName := matches[2]
 				if request.Accept {
-					responseMessage = fmt.Sprintf("Advance payment of %s tk for %s is accepted", amount, monthName)
+					responseMessage = fmt.Sprintf("Advance payment of %s tk is accepted", amount)
 				} else {
-					responseMessage = fmt.Sprintf("Advance payment of %s tk for %s is rejected", amount, monthName)
+					responseMessage = fmt.Sprintf("Advance payment of %s tk is rejected", amount)
 				}
 			} else {
 				if request.Accept {
@@ -2525,6 +2494,102 @@ func HandleTenantRequestAction(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": actionType + " " + newStatus + " (auto-response notification sent, use /notifications/send-comment to add comments)",
 	})
+}
+
+// GetAdvanceDetailsHandler handles GET requests to get advance details for a floor
+func GetAdvanceDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("\n=== New Get Advance Details Request ===")
+	fmt.Printf("Method: %s\n", r.Method)
+	fmt.Printf("URL: %s\n", r.URL)
+
+	// Set response header to JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(AdvanceDetailsResponse{false, "Method not allowed", nil})
+		return
+	}
+
+	// Get user ID from session
+	userID := getUserIDFromContext(r)
+	if userID == 0 {
+		fmt.Println("No user ID found in session")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(AdvanceDetailsResponse{false, "User not authenticated", nil})
+		return
+	}
+
+	// Extract floor ID from URL
+	vars := mux.Vars(r)
+	floorID, err := strconv.ParseInt(vars["floor_id"], 10, 64)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(AdvanceDetailsResponse{false, "Invalid floor ID", nil})
+		return
+	}
+
+	fmt.Printf("Fetching advance details for floor ID: %d\n", floorID)
+
+	db, err := config.GetDBConnection()
+	if err != nil {
+		fmt.Printf("Database connection error: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvanceDetailsResponse{false, "Database connection error", nil})
+		return
+	}
+
+	// Query to get advance details for the floor where money is not zero (including pending status)
+	query := `
+		SELECT a.id, a.advance_uid, u.name, a.money, a.created_at, a.status
+		FROM advance a
+		INNER JOIN user u ON a.advance_uid = u.id
+		WHERE a.fid = ? AND a.money > 0
+		ORDER BY a.created_at DESC`
+	
+	fmt.Printf("Executing query: %s with floorID: %d\n", query, floorID)
+	
+	rows, err := db.Query(query, floorID)
+	if err != nil {
+		fmt.Printf("Error querying advance details: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvanceDetailsResponse{false, "Error fetching advance details", nil})
+		return
+	}
+	defer rows.Close()
+
+	var advances []AdvanceDetail
+	for rows.Next() {
+		var advance AdvanceDetail
+		if err := rows.Scan(&advance.ID, &advance.AdvanceUID, &advance.UserName, &advance.Money, &advance.CreatedAt, &advance.Status); err != nil {
+			fmt.Printf("Error scanning advance detail row: %v\n", err)
+			continue
+		}
+		advances = append(advances, advance)
+		fmt.Printf("Found advance: ID=%d, User=%s, Money=%d\n", advance.ID, advance.UserName, advance.Money)
+	}
+
+	if err = rows.Err(); err != nil {
+		fmt.Printf("Error iterating advance detail rows: %v\n", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(AdvanceDetailsResponse{false, "Error processing advance details", nil})
+		return
+	}
+
+	fmt.Printf("Found %d advance details for floor\n", len(advances))
+
+	response := AdvanceDetailsResponse{
+		Success: true,
+		Message: "Advance details retrieved successfully",
+		Advances: advances,
+	}
+
+	// Log the response
+	responseJSON, _ := json.MarshalIndent(response, "", "  ")
+	fmt.Printf("Sending response: %s\n", string(responseJSON))
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
 }
 
 // GetUserTenantPropertiesHandler handles GET requests to get all properties where the user is a tenant
@@ -3818,11 +3883,7 @@ func CreateAdvancePaymentRequestHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	if req.Month <= 0 || req.Month > 12 {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(AdvancePaymentResponse{false, "Month must be between 1 and 12", 0})
-		return
-	}
+
 
 	db, err := config.GetDBConnection()
 	if err != nil {
@@ -3898,12 +3959,11 @@ func CreateAdvancePaymentRequestHandler(w http.ResponseWriter, r *http.Request) 
 	currentTime := time.Now().In(time.FixedZone("BDT", 6*60*60)).Format("2006-01-02")
 	_, err = db.Exec(`
 		INSERT INTO advance (
-			id, advance_uid, money, month, fid, created_at, created_by, updated_at, updated_by, status
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			id, advance_uid, money, fid, created_at, created_by, updated_at, updated_by, status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		advanceID,
 		req.AdvanceUID,
 		req.Money,
-		req.Month,
 		floorID,
 		currentTime,
 		userID,
@@ -3921,13 +3981,8 @@ func CreateAdvancePaymentRequestHandler(w http.ResponseWriter, r *http.Request) 
 
 	// Create notification for the advance payment request
 	{
-		// Create notification message with payment amount and month name
-		monthNames := []string{
-			"", "January", "February", "March", "April", "May", "June",
-			"July", "August", "September", "October", "November", "December",
-		}
-		monthName := monthNames[req.Month]
-		message := fmt.Sprintf("Advance payment request: %d tk for %s", req.Money, monthName)
+		// Create notification message with payment amount
+		message := fmt.Sprintf("Advance payment request: %d tk", req.Money)
 
 		// Create notification with push notification
 		err = SendNotificationWithPush(userID, req.AdvanceUID, propertyID, floorID, message, "pending", nil)

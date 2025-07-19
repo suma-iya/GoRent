@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import '../models/notification.dart' as models;
 import 'conversation_history_screen.dart';
 import 'package:go_rent_frontend/utils/app_localizations.dart';
@@ -53,6 +54,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
         await _apiService.markNotificationsAsRead();
         _hasMarkedAsRead = true;
         print('Notifications marked as read when leaving screen');
+        
+        // Notify other screens to refresh notification count
+        NotificationService.notifyNotificationCountChanged();
       } catch (e) {
         print('Error marking notifications as read: $e');
       }
@@ -169,6 +173,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
       return dateStr;
     }
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -398,14 +404,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> with WidgetsB
                       ),
                     Expanded(
                       child: Text(
-                                    notification.message,
+                        notification.message,
                         style: TextStyle(
-                                      fontSize: 16,
+                          fontSize: 16,
                           fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.w600,
                           color: notification.isRead ? Colors.grey.shade700 : Colors.black87,
                           height: 1.4,
-                                    ),
-                                  ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
