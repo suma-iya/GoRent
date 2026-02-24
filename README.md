@@ -412,9 +412,7 @@ docker-compose down
 | `POST` | `/chat` | Send message |
 | `GET` | `/chat/health` | Health check |
 
-> For the full API reference, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 
----
 
 ## 📁 Project Structure
 
