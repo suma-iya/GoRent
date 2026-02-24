@@ -13,6 +13,7 @@ import '../utils/app_localizations.dart';
 import 'property_details_screen.dart';
 import 'notifications_screen.dart';
 import 'settings_screen.dart';
+import 'chat_screen.dart';
 
 class PropertiesScreen extends StatefulWidget {
   const PropertiesScreen({Key? key}) : super(key: key);
@@ -856,6 +857,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               padding: const EdgeInsets.all(24),
@@ -877,6 +879,7 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                 fontWeight: FontWeight.w700,
                 color: _textPrimary,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
@@ -887,23 +890,6 @@ class _PropertiesScreenState extends State<PropertiesScreen>
               ),
               textAlign: TextAlign.center,
             ),
-            if (showAddButton) ...[
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _showAddPropertyDialog,
-                icon: const Icon(Icons.add_rounded),
-                label: Text(AppLocalizations.of(context).addProperty),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: themeColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -1220,6 +1206,20 @@ class _PropertiesScreenState extends State<PropertiesScreen>
                     ),
                   );
                   _loadNotifications();
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.smart_toy_rounded, color: Colors.purple),
+                title: const Text('AI Chatbot'),
+                onTap: () async {
+                  Navigator.pop(context); // Close drawer
+                  HapticFeedback.lightImpact();
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChatScreen(),
+                    ),
+                  );
                 },
               ),
               ListTile(

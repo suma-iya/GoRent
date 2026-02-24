@@ -360,8 +360,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   }
                 } catch (e) {
                   Navigator.pop(context);
+                  // Extract clean error message
+                  String errorMessage = e.toString();
+                  if (errorMessage.startsWith('Exception: ')) {
+                    errorMessage = errorMessage.substring(11);
+                  }
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
+                    SnackBar(
+                      content: Text(errorMessage),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 4),
+                    ),
                   );
                 }
               },

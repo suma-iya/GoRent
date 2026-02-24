@@ -1,6 +1,8 @@
 Successfully connected to the database!
 Registered route: /login [POST]
 Registered route: /register [POST]
+Registered route: /chat [POST OPTIONS]
+Registered route: /chat/health [GET]
 Registered route: / []
 Registered route: /properties [GET]
 Registered route: /properties/tenant [GET]
@@ -21,6 +23,7 @@ Registered route: /floor/{floor_id:[0-9]+}/payment-history [GET]
 Registered route: /floor/{floor_id:[0-9]+}/payment [GET]
 Registered route: /floor/{floor_id:[0-9]+}/advance-payment/check [GET]
 Registered route: /floor/{floor_id:[0-9]+}/advance-payment [DELETE]
+Registered route: /floor/{floor_id:[0-9]+}/advance-details [GET]
 Registered route: /users/phones [GET]
 Registered route: /users/phones/{phone} [GET]
 Registered route: /notifications [GET]
@@ -37,4 +40,5 @@ Registered route: /property/{id:[0-9]+}/floor/{floor_id:[0-9]+}/pending-payments
 Registered route: /test/notifications [POST]
 Registered route: /test/fcm-connection-public [GET]
 Server starting on http://192.168.0.230:8080
-2025/07/17 20:46:37 listen tcp :8080: bind: address already in use
+2025/12/30 18:50:41 listen tcp :8080: bind: address already in use
+exit status 1

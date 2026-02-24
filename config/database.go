@@ -3,17 +3,26 @@ package config
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	_ "github.com/go-sql-driver/mysql"
 	"time"
 )
 
-const (
-	DBUser     = "suma"      // Change this to your MySQL username
-	DBPassword = "tMyc6mApj]wgzHl7"          // Change this to your MySQL password
-	DBHost     = "localhost" // Change this if your MySQL is on a different host
-	DBPort     = "3307"      // Default MySQL port
-	DBName     = "rent"      // Your database name
+var (
+	DBUser     = getEnv("DB_USER", "suma")
+	DBPassword = getEnv("DB_PASSWORD", "tMyc6mApj]wgzHl7")
+	DBHost     = getEnv("DB_HOST", "localhost")
+	DBPort     = getEnv("DB_PORT", "3306")
+	DBName     = getEnv("DB_NAME", "rent")
 )
+
+// getEnv gets an environment variable or returns a default value
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
 
 var db *sql.DB
 

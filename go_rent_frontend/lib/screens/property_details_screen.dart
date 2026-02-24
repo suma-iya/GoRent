@@ -8,6 +8,120 @@ import 'payment_screen.dart';
 import 'advance_details_screen.dart';
 import '../utils/app_localizations.dart';
 
+// Separate widget for Send Payment Dialog to properly manage controllers
+class _SendPaymentDialogContent extends StatefulWidget {
+  final int propertyId;
+  final int floorId;
+  final ApiService apiService;
+  final VoidCallback onSuccess;
+
+  const _SendPaymentDialogContent({
+    required this.propertyId,
+    required this.floorId,
+    required this.apiService,
+    required this.onSuccess,
+  });
+
+  @override
+  State<_SendPaymentDialogContent> createState() => _SendPaymentDialogContentState();
+}
+
+class _SendPaymentDialogContentState extends State<_SendPaymentDialogContent> {
+  late final TextEditingController amountController;
+  late final TextEditingController electricityBillController;
+
+  @override
+  void initState() {
+    super.initState();
+    amountController = TextEditingController();
+    electricityBillController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    amountController.dispose();
+    electricityBillController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(AppLocalizations.of(context).sendPaymentNotification),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: amountController,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).paymentAmount,
+              hintText: AppLocalizations.of(context).enterPaymentAmount,
+            ),
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: electricityBillController,
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context).electricityBill,
+              hintText: AppLocalizations.of(context).enterElectricityBill,
+            ),
+            keyboardType: TextInputType.number,
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(AppLocalizations.of(context).cancel),
+        ),
+        TextButton(
+          onPressed: () async {
+            final amount = int.tryParse(amountController.text);
+            if (amount == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidAmount)),
+              );
+              return;
+            }
+            int? electricityBill;
+            if (electricityBillController.text.isNotEmpty) {
+              electricityBill = int.tryParse(electricityBillController.text);
+              if (electricityBill == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidElectricityBill)),
+                );
+                return;
+              }
+            }
+            try {
+              await widget.apiService.sendPaymentNotification(
+                propertyId: widget.propertyId,
+                floorId: widget.floorId,
+                amount: amount,
+                electricityBill: electricityBill,
+              );
+              if (!mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(AppLocalizations.of(context).paymentNotificationSent)),
+              );
+              widget.onSuccess();
+            } catch (e) {
+              if (!mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: $e')),
+              );
+            }
+          },
+          child: Text(AppLocalizations.of(context).send),
+        ),
+      ],
+    );
+  }
+}
+
 class PropertyDetailsScreen extends StatefulWidget {
   final Property property;
   final bool? isManagedProperty; // Add this parameter
@@ -60,15 +174,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     super.initState();
     // Initialize with passed value to avoid color flash
     _isManager = widget.isManagedProperty ?? false;
-    _apiService.loadCurrentUserId().then((_) {
-      setState(() {}); // Rebuild to update UI with loaded userId
-    });
-    _loadPropertyDetails();
+    _initializeData();
   }
 
-
+  Future<void> _initializeData() async {
+    await _apiService.loadCurrentUserId();
+    if (!mounted) return;
+    setState(() {}); // Rebuild to update UI with loaded userId
+    await _loadPropertyDetails();
+  }
 
   Future<void> _loadPropertyDetails() async {
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _error = null;
@@ -77,6 +194,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     try {
       final result = await _apiService.getPropertyDetails(widget.property.id);
       
+      if (!mounted) return;
       setState(() {
         _property = result['property'];
         _floors = result['floors'];
@@ -84,6 +202,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -94,12 +213,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    // Clean up any resources if needed
+    super.dispose();
+  }
+
   Future<void> _showAddFloorDialog() async {
     final nameController = TextEditingController();
     final rentController = TextEditingController();
-    
-
-    return showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).addFloor),
@@ -137,26 +260,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 );
                 return;
               }
-
               try {
                 final rent = int.tryParse(rentController.text);
                 if (rent == null) {
                   throw Exception(AppLocalizations.of(context).invalidRentAmount);
                 }
-
                 final success = await _apiService.addFloor(
                   widget.property.id,
                   nameController.text,
                   rent,
                 );
-
                 if (success) {
+                  if (!mounted) return;
                   Navigator.pop(context);
-                  _loadPropertyDetails();
+                  await _loadPropertyDetails();
                 } else {
                   throw Exception(AppLocalizations.of(context).failedToAddFloor);
                 }
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
@@ -167,13 +289,25 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ],
       ),
     );
+    // Dispose controllers after dialog is fully closed with a delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        nameController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+      try {
+        rentController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+    });
   }
 
   Future<void> _showAddTenantDialog(Floor floor) async {
     final nameController = TextEditingController();
     final phoneController = TextEditingController();
-
-    return showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).addTenant),
@@ -182,17 +316,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
           children: [
             TextField(
               controller: nameController,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).tenantName,
-                  hintText: AppLocalizations.of(context).enterTenantName,
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).tenantName,
+                hintText: AppLocalizations.of(context).enterTenantName,
               ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: phoneController,
-                decoration: InputDecoration(
-                  labelText: AppLocalizations.of(context).phoneNumber,
-                  hintText: AppLocalizations.of(context).enterPhoneNumber,
+              decoration: InputDecoration(
+                labelText: AppLocalizations.of(context).phoneNumber,
+                hintText: AppLocalizations.of(context).enterPhoneNumber,
               ),
               keyboardType: TextInputType.phone,
             ),
@@ -211,7 +345,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 );
                 return;
               }
-
               try {
                 final success = await _apiService.addTenantToFloor(
                   widget.property.id,
@@ -219,14 +352,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   nameController.text,
                   phoneController.text,
                 );
-
                 if (success) {
+                  if (!mounted) return;
                   Navigator.pop(context);
-                  _loadPropertyDetails();
+                  await _loadPropertyDetails();
                 } else {
                   throw Exception(AppLocalizations.of(context).failedToAddTenant);
                 }
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
@@ -237,10 +371,23 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ],
       ),
     );
+    // Dispose controllers after dialog is fully closed with a delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        nameController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+      try {
+        phoneController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+    });
   }
 
   Future<void> _showRemoveTenantDialog(Floor floor) async {
-    return showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).removeTenant),
@@ -257,10 +404,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   widget.property.id,
                   floor.id,
                 );
-
                 if (success) {
+                  if (!mounted) return;
                   Navigator.pop(context);
-                  _loadPropertyDetails();
+                  await _loadPropertyDetails();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(AppLocalizations.of(context).tenantRemovedSuccessfully)),
                   );
@@ -268,6 +415,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                   throw Exception(AppLocalizations.of(context).failedToRemoveTenant);
                 }
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
@@ -283,8 +431,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Future<void> _showUpdateFloorDialog(Floor floor) async {
     final nameController = TextEditingController(text: floor.name);
     final rentController = TextEditingController(text: floor.rent.toString());
-
-    return showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).updateFloor),
@@ -322,27 +469,26 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 );
                 return;
               }
-
               try {
                 final rent = int.tryParse(rentController.text);
                 if (rent == null) {
                   throw Exception(AppLocalizations.of(context).invalidRentAmount);
                 }
-
                 final success = await _apiService.updateFloor(
                   widget.property.id,
                   floor.id,
                   nameController.text,
                   rent,
                 );
-
                 if (success) {
+                  if (!mounted) return;
                   Navigator.pop(context);
-                  _loadPropertyDetails();
+                  await _loadPropertyDetails();
                 } else {
                   throw Exception(AppLocalizations.of(context).failedToUpdateFloor);
                 }
               } catch (e) {
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
                 );
@@ -353,150 +499,166 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ],
       ),
     );
+    // Dispose controllers after dialog is fully closed with a delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        nameController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+      try {
+        rentController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+    });
   }
 
-  void _showTenantRequestDialog(Floor floor) {
+ Future<void> _showTenantRequestDialog(Floor floor) async {
     final phoneController = TextEditingController();
     List<String> allPhones = [];
     List<String> filteredPhones = [];
     bool isLoading = false;
+    final parentContext = context;
 
-    showDialog(
+    await showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      barrierDismissible: true,
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-            title: Text(AppLocalizations.of(context).sendTenantRequest),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isLoading)
-                  const Center(child: CircularProgressIndicator())
-                else
-                  TextField(
-                    controller: phoneController,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context).phoneNumber,
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          phoneController.clear();
-                          setState(() {
-                            filteredPhones = [];
-                          });
-                        },
-                      ),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return MediaQuery.removeViewInsets(
+                context: context,
+                removeBottom: true,
+                child: AlertDialog(
+                  title: Text(AppLocalizations.of(context).sendTenantRequest),
+                  content: SizedBox(
+                    width: double.maxFinite,
+                    height: 350, // Fixed height for dialog
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          TextField(
+                            controller: phoneController,
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context).phoneNumber,
+                              hintText: "Tap to load available phone numbers",
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  phoneController.clear();
+                                  setState(() => filteredPhones = []);
+                                },
+                              ),
+                            ),
+                            onTap: () async {
+                              if (allPhones.isEmpty) {
+                                setState(() => isLoading = true);
+                                try {
+                                  final phones = await _apiService.getUserPhones();
+                                  if (!mounted) return;
+                                  setState(() {
+                                    allPhones = phones;
+                                    filteredPhones = phones;
+                                    isLoading = false;
+                                  });
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  setState(() => isLoading = false);
+                                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                                    SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            onChanged: (value) {
+                              setState(() {
+                                filteredPhones = allPhones
+                                    .where((phone) => phone.contains(value))
+                                    .toList();
+                              });
+                            },
+                          ),
+                        if (filteredPhones.isNotEmpty)
+                          Expanded(
+                            child: ListView.builder(
+                              key: const ValueKey('filtered_phones_list'),
+                              itemCount: filteredPhones.length,
+                              itemBuilder: (context, index) => ListTile(
+                                key: ValueKey('phone_$index'),
+                                title: Text(filteredPhones[index]),
+                                onTap: () {
+                                  phoneController.text = filteredPhones[index];
+                                  setState(() => filteredPhones = []);
+                                },
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                    onTap: () async {
-                      if (allPhones.isEmpty) {
-                        setState(() {
-                          isLoading = true;
-                        });
-                        try {
-                          allPhones = await _apiService.getUserPhones();
-                          setState(() {
-                            filteredPhones = allPhones;
-                            isLoading = false;
-                          });
-                        } catch (e) {
-                          setState(() {
-                            isLoading = false;
-                          });
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
-                            );
-                          }
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(AppLocalizations.of(context).cancel),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        if (phoneController.text.isEmpty) {
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber)),
+                          );
+                          return;
                         }
-                      }
-                    },
-                    onChanged: (value) {
-                      setState(() {
-                        filteredPhones = allPhones
-                            .where((phone) => phone.contains(value))
-                            .toList();
-                      });
-                    },
-                  ),
-                if (filteredPhones.isNotEmpty)
-                  Container(
-                    constraints: const BoxConstraints(maxHeight: 200),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: filteredPhones.length,
-                      itemBuilder: (context, index) {
-                        return ListTile(
-                          title: Text(filteredPhones[index]),
-                          onTap: () {
-                            phoneController.text = filteredPhones[index];
-                            setState(() {
-                              filteredPhones = [];
-                            });
-                          },
-                        );
+                        try {
+                          final success = await _apiService.sendTenantRequest(
+                            widget.property.id,
+                            floor.id,
+                            phoneController.text,
+                          );
+                          if (success && mounted) {
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(parentContext).showSnackBar(
+                              SnackBar(content: Text(AppLocalizations.of(context).tenantRequestSentSuccessfully)),
+                            );
+                            await _loadPropertyDetails();
+                          }
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                          await _loadPropertyDetails();
+                        }
                       },
+                      child: Text(AppLocalizations.of(context).sendRequest),
                     ),
-                  ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context).cancel),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (phoneController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber)),
-                    );
-                    return;
-                  }
-
-                  try {
-                    final success = await _apiService.sendTenantRequest(
-                      widget.property.id,
-                      floor.id,
-                      phoneController.text,
-                    );
-
-                    if (success) {
-                      if (mounted) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(AppLocalizations.of(context).tenantRequestSentSuccessfully)),
-                        );
-                        await _loadPropertyDetails(); // Refresh property details
-                      }
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      // Show error message first
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(e.toString().replaceAll('Exception: ', '')),
-                          backgroundColor: Colors.red,
-                          duration: const Duration(seconds: 3),
-                        ),
-                      );
-                      
-                      // Wait for the snackbar to be visible
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      
-                      // Then close the dialog and refresh
-                      Navigator.pop(context);
-                      await _loadPropertyDetails();
-                    }
-                  }
-                },
-                child: Text(AppLocalizations.of(context).sendRequest),
-              ),
-            ],
+                  ],
+                ),
+              );
+            },
           );
         },
       ),
     );
+    // Dispose controllers after dialog is fully closed with a delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        phoneController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+    });
   }
+
 
   Future<void> _showCancelRequestDialog(Floor floor) async {
     return showDialog(
@@ -536,85 +698,17 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 
   Future<void> _showSendPaymentDialog(Floor floor) async {
-    final amountController = TextEditingController();
-    final electricityBillController = TextEditingController();
-    
-    return showDialog(
+    await showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-        title: Text(AppLocalizations.of(context).sendPaymentNotification),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-          controller: amountController,
-          decoration: InputDecoration(
-            labelText: AppLocalizations.of(context).paymentAmount,
-            hintText: AppLocalizations.of(context).enterPaymentAmount,
-          ),
-          keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: electricityBillController,
-                                  decoration: InputDecoration(
-                    labelText: AppLocalizations.of(context).electricityBill,
-                    hintText: AppLocalizations.of(context).enterElectricityBill,
-                  ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(AppLocalizations.of(context).cancel),
-          ),
-          TextButton(
-            onPressed: () async {
-              final amount = int.tryParse(amountController.text);
-              if (amount == null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidAmount)),
-                );
-                return;
-              }
-              
-              // Parse electricity bill if provided
-              int? electricityBill;
-              if (electricityBillController.text.isNotEmpty) {
-                electricityBill = int.tryParse(electricityBillController.text);
-                if (electricityBill == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidElectricityBill)),
-                  );
-                  return;
-                }
-              }
-              
-              try {
-                await _apiService.sendPaymentNotification(
-                  propertyId: widget.property.id,
-                  floorId: floor.id,
-                  amount: amount,
-                  electricityBill: electricityBill,
-                );
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(AppLocalizations.of(context).paymentNotificationSent)),
-                );
-              } catch (e) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e')),
-                );
-              }
-            },
-            child: Text(AppLocalizations.of(context).send),
-            ),
-          ],
-        ),
+      builder: (context) => _SendPaymentDialogContent(
+        propertyId: widget.property.id,
+        floorId: floor.id,
+        apiService: _apiService,
+        onSuccess: () {
+          if (mounted) {
+            _loadPropertyDetails();
+          }
+        },
       ),
     );
   }
@@ -625,167 +719,177 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     List<String> allPhones = [];
     List<String> filteredPhones = [];
     bool isLoading = false;
+    final parentContext = context;
     
-    return showDialog(
+    await showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+      barrierDismissible: true,
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-              title: Text(AppLocalizations.of(context).sendAdvancePaymentRequest),
-              content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Phone number field with search
-                  if (isLoading)
-                    const Center(child: CircularProgressIndicator())
-                  else
-                    TextField(
-                      controller: phoneController,
-                      decoration: InputDecoration(
-                        labelText: AppLocalizations.of(context).phoneNumber,
-                        hintText: AppLocalizations.of(context).enterPhoneNumber,
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: () {
-                            phoneController.clear();
-                            setState(() {
-                              filteredPhones = [];
-                            });
-                          },
-                        ),
-                      ),
-                      onTap: () async {
-                        if (allPhones.isEmpty) {
-                          setState(() {
-                            isLoading = true;
-                          });
-                          try {
-                            allPhones = await _apiService.getUserPhones();
-                            setState(() {
-                              filteredPhones = allPhones;
-                              isLoading = false;
-                            });
-                          } catch (e) {
-                            setState(() {
-                              isLoading = false;
-                            });
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
-                              );
-                            }
-                          }
-                        }
-                      },
-                      onChanged: (value) {
-                        setState(() {
-                          filteredPhones = allPhones
-                              .where((phone) => phone.contains(value))
-                              .toList();
-                        });
-                      },
-                    ),
-                  if (filteredPhones.isNotEmpty)
-                    Container(
-                      constraints: const BoxConstraints(maxHeight: 120),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: filteredPhones.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            dense: true,
-                            title: Text(
-                              filteredPhones[index],
-                              style: const TextStyle(fontSize: 14),
+          return LayoutBuilder(
+            builder: (context, constraints) {
+              return MediaQuery.removeViewInsets(
+                context: context,
+                removeBottom: true,
+                child: AlertDialog(
+                  title: Text(AppLocalizations.of(context).sendAdvancePaymentRequest),
+                  content: SizedBox(
+                    width: double.maxFinite,
+                    height: 400, // Fixed height for dialog
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else
+                          TextField(
+                            controller: phoneController,
+                            decoration: InputDecoration(
+                              labelText: AppLocalizations.of(context).phoneNumber,
+                              hintText: "Tap to load available phone numbers",
+                              suffixIcon: IconButton(
+                                icon: const Icon(Icons.clear),
+                                onPressed: () {
+                                  phoneController.clear();
+                                  setState(() => filteredPhones = []);
+                                },
+                              ),
                             ),
-                            onTap: () {
-                              phoneController.text = filteredPhones[index];
+                            onTap: () async {
+                              if (allPhones.isEmpty) {
+                                setState(() => isLoading = true);
+                                try {
+                                  final phones = await _apiService.getUserPhones();
+                                  if (!mounted) return;
+                                  setState(() {
+                                    allPhones = phones;
+                                    filteredPhones = phones;
+                                    isLoading = false;
+                                  });
+                                } catch (e) {
+                                  if (!mounted) return;
+                                  setState(() => isLoading = false);
+                                  ScaffoldMessenger.of(parentContext).showSnackBar(
+                                    SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
+                                  );
+                                }
+                              }
+                            },
+                            onChanged: (value) {
                               setState(() {
-                                filteredPhones = [];
+                                filteredPhones = allPhones
+                                    .where((phone) => phone.contains(value))
+                                    .toList();
                               });
                             },
-                          );
-                        },
-                      ),
+                          ),
+                        if (filteredPhones.isNotEmpty)
+                          Expanded(
+                            child: ListView.builder(
+                              key: const ValueKey('advance_filtered_phones_list'),
+                              itemCount: filteredPhones.length,
+                              itemBuilder: (context, index) => ListTile(
+                                key: ValueKey('advance_phone_$index'),
+                                title: Text(filteredPhones[index]),
+                                onTap: () {
+                                  phoneController.text = filteredPhones[index];
+                                  setState(() => filteredPhones = []);
+                                },
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 12),
+                        // Amount field
+                        TextField(
+                          controller: moneyController,
+                          decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context).amount,
+                            hintText: AppLocalizations.of(context).enterAdvancePaymentAmount,
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                      ],
                     ),
-                  const SizedBox(height: 12),
-                  // Amount field
-                  TextField(
-                    controller: moneyController,
-                    decoration: InputDecoration(
-                      labelText: AppLocalizations.of(context).amount,
-                      hintText: AppLocalizations.of(context).enterAdvancePaymentAmount,
-                    ),
-                    keyboardType: TextInputType.number,
                   ),
-
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(AppLocalizations.of(context).cancel),
-              ),
-              TextButton(
-                onPressed: () async {
-                  if (phoneController.text.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber)),
-                    );
-                    return;
-                  }
-                  
-                  final money = int.tryParse(moneyController.text);
-                  if (money == null || money <= 0) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidAmount)),
-                    );
-                    return;
-                  }
-                  
-
-                  
-                  try {
-                    // Get user ID from phone number
-                    final userId = await _apiService.getUserIdByPhone(phoneController.text);
-                    
-                    final success = await _apiService.createAdvancePaymentRequest(
-                      propertyId: widget.property.id,
-                      floorId: floor.id,
-                      advanceUid: userId,
-                      money: money,
-                    );
-                    
-                    if (success) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(AppLocalizations.of(context).advancePaymentRequestSentSuccessfully)),
-                      );
-                      // Reload property details to update the UI
-                      _loadPropertyDetails();
-                    } else {
-                      throw Exception('Failed to send advance payment request');
-                    }
-                  } catch (e) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
-                    );
-                  }
-                },
-                child: Text(AppLocalizations.of(context).send),
-              ),
-            ],
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: Text(AppLocalizations.of(context).cancel),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        if (phoneController.text.isEmpty) {
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterPhoneNumber)),
+                          );
+                          return;
+                        }
+                        
+                        final money = int.tryParse(moneyController.text);
+                        if (money == null || money <= 0) {
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(content: Text(AppLocalizations.of(context).pleaseEnterValidAmount)),
+                          );
+                          return;
+                        }
+                        
+                        try {
+                          // Get user ID from phone number
+                          final userId = await _apiService.getUserIdByPhone(phoneController.text);
+                          
+                          final success = await _apiService.createAdvancePaymentRequest(
+                            propertyId: widget.property.id,
+                            floorId: floor.id,
+                            advanceUid: userId,
+                            money: money,
+                          );
+                          
+                          if (success && mounted) {
+                            Navigator.pop(dialogContext);
+                            ScaffoldMessenger.of(parentContext).showSnackBar(
+                              SnackBar(content: Text(AppLocalizations.of(context).advancePaymentRequestSentSuccessfully)),
+                            );
+                            await _loadPropertyDetails();
+                          }
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(parentContext).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString().replaceAll('Exception: ', '')),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 3),
+                            ),
+                          );
+                          await _loadPropertyDetails();
+                        }
+                      },
+                      child: Text(AppLocalizations.of(context).send),
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),
     );
+    // Dispose controllers after dialog is fully closed with a delay to ensure dialog is dismissed
+    Future.delayed(const Duration(milliseconds: 500), () {
+      try {
+        phoneController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+      try {
+        moneyController.dispose();
+      } catch (e) {
+        // Controller already disposed or error occurred
+      }
+    });
   }
 
   Future<void> _showCancelAdvancePaymentDialog(Floor floor) async {
-    return showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(AppLocalizations.of(context).cancelAdvancePaymentRequest),
@@ -801,16 +905,18 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                 final success = await _apiService.cancelAdvancePaymentRequest(floor.id);
                 
                 if (success) {
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text(AppLocalizations.of(context).advancePaymentRequestCancelledSuccessfully)),
                   );
                   // Reload property details to update the UI
-                  _loadPropertyDetails();
+                  await _loadPropertyDetails();
                 } else {
                   throw Exception(AppLocalizations.of(context).failedToCancelAdvancePaymentRequest);
                 }
               } catch (e) {
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('${AppLocalizations.of(context).errorPrefix}: $e')),
@@ -826,6 +932,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Safety check to ensure widget is properly initialized
+    if (!mounted) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    
     return Scaffold(
       backgroundColor: _backgroundColor,
       appBar: AppBar(
@@ -871,7 +984,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                         Text(_error!),
                         const SizedBox(height: 16),
                         ElevatedButton(
-                          onPressed: _loadPropertyDetails,
+                          onPressed: () async {
+                            await _loadPropertyDetails();
+                          },
                           child: Text(AppLocalizations.of(context).retry),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _themeColor,
@@ -895,7 +1010,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                             if (_isManager) ...[
                               const SizedBox(height: 16),
                               ElevatedButton(
-                                onPressed: _showAddFloorDialog,
+                                onPressed: () async {
+                                  await _showAddFloorDialog();
+                                },
                                 child: Text(AppLocalizations.of(context).addFirstFloor),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _themeColor,
@@ -911,321 +1028,347 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                           ],
                         ),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: _floors.length,
-                        itemBuilder: (context, index) {
-                          final floor = _floors[index];
-                          // Determine status: if tenant exists and no explicit status, it's occupied
-                          final actualStatus = floor.status ?? (floor.tenant != null ? 'occupied' : 'available');
-                          final themeColor = actualStatus == 'occupied'
-                              ? _themeColor
-                              : actualStatus == 'pending'
-                                  ? Colors.orange
-                                  : Color.fromARGB(255, 118, 221, 235); // Make available status green
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 20),
-                            decoration: BoxDecoration(
-                              color: _cardColor,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.08),
-                                  blurRadius: 20,
-                                  spreadRadius: 0,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                              border: Border.all(
-                                color: themeColor.withOpacity(0.1),
-                                width: 1,
-                              ),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(20),
-                                onTap: () {
-                                  // Navigate to payment screen when floor is clicked
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PaymentScreen(
-                                        property: widget.property,
-                                        floor: floor,
-                                        themeColor: _themeColor,
-                                      ),
+                    : _floors.isNotEmpty
+                        ? ListView.builder(
+                            key: const PageStorageKey('property_details_floors'),
+                            padding: const EdgeInsets.all(20),
+                            itemCount: _floors.length,
+                            itemBuilder: (context, index) {
+                              if (index >= _floors.length) return const SizedBox.shrink();
+                              
+                              final floor = _floors[index];
+                              if (floor == null) return const SizedBox.shrink();
+                              
+                              // Determine status: if tenant exists and no explicit status, it's occupied
+                              final actualStatus = floor.status ?? (floor.tenant != null ? 'occupied' : 'available');
+                              final themeColor = actualStatus == 'occupied'
+                                  ? _themeColor
+                                  : actualStatus == 'pending'
+                                      ? Colors.orange
+                                      : const Color.fromARGB(255, 118, 221, 235); // Make available status green
+                              
+                              return Container(
+                                key: ValueKey('floor_${floor.id}'),
+                                margin: const EdgeInsets.only(bottom: 20),
+                                decoration: BoxDecoration(
+                                  color: _cardColor,
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 20,
+                                      spreadRadius: 0,
+                                      offset: const Offset(0, 8),
                                     ),
-                                  );
-                                },
-                            child: Column(
-                              children: [
-                                    Padding(
-                                      padding: const EdgeInsets.all(20),
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            padding: const EdgeInsets.all(16),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  themeColor.withOpacity(0.2),
-                                                  themeColor.withOpacity(0.1),
-                                                ],
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                              ),
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            child: Icon(
-                                              actualStatus == 'occupied'
-                                                  ? Icons.person_rounded
-                                                  : actualStatus == 'pending'
-                                                      ? Icons.hourglass_top_rounded
-                                                      : Icons.home_rounded,
-                                              color: themeColor,
-                                              size: 28,
+                                  ],
+                                  border: Border.all(
+                                    color: themeColor.withOpacity(0.1),
+                                    width: 1,
                                   ),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(20),
+                                    onTap: () {
+                                      // Navigate to payment screen when floor is clicked
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => PaymentScreen(
+                                            property: widget.property,
+                                            floor: floor,
+                                            themeColor: _themeColor,
                                           ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                        Row(
-                                          children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        floor.name,
-                                                        style: TextStyle(
-                                                          fontSize: 18,
-                                                          fontWeight: FontWeight.w700,
-                                                          color: _textPrimary,
+                                        ),
+                                      );
+                                    },
+                                    child: Column(
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.all(20),
+                                          child: Row(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(16),
+                                                decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                    colors: [
+                                                      themeColor.withOpacity(0.2),
+                                                      themeColor.withOpacity(0.1),
+                                                    ],
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                  ),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: Icon(
+                                                  actualStatus == 'occupied'
+                                                      ? Icons.person_rounded
+                                                      : actualStatus == 'pending'
+                                                          ? Icons.hourglass_top_rounded
+                                                          : Icons.home_rounded,
+                                                  color: themeColor,
+                                                  size: 28,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 16),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Expanded(
+                                                          child: Text(
+                                                            floor.name,
+                                                            style: TextStyle(
+                                                              fontSize: 18,
+                                                              fontWeight: FontWeight.w700,
+                                                              color: _textPrimary,
+                                                            ),
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
                                                         ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                              const SizedBox(width: 8),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                      decoration: BoxDecoration(
-                                                        color: themeColor.withOpacity(0.12),
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                                                                                child: Text(
+                                                        const SizedBox(width: 8),
+                                                        Container(
+                                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                                          decoration: BoxDecoration(
+                                                            color: themeColor.withOpacity(0.12),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: Text(
                                                             actualStatus == 'occupied'
                                                                ? AppLocalizations.of(context).occupied
                                                                : actualStatus == 'pending'
                                                                  ? AppLocalizations.of(context).pending
                                                                  : AppLocalizations.of(context).available,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.w600,
-                                                          color: themeColor,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 6),
-                                                // Rent information
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.attach_money_rounded,
-                                                      size: 16,
-                                                      color: _textSecondary,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Expanded(
-                                                      child: Text(
-                                                        '${AppLocalizations.of(context).rent}: ${floor.rent} ${AppLocalizations.of(context).currency}',
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          color: _textSecondary,
-                                                        ),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                // Tenant information
-                                                if (floor.tenant != null) ...[
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.person,
-                                                        size: 16,
-                                                        color: _textSecondary,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Expanded(
-                                                        child: Text(
-                                                          '${AppLocalizations.of(context).tenant}: ${floor.tenantName ?? 'Unknown User'}',
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            color: _textSecondary,
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              fontWeight: FontWeight.w600,
+                                                              color: themeColor,
+                                                            ),
                                                           ),
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                                // Advance details button
-                                                const SizedBox(height: 8),
-                                                GestureDetector(
-                                                  onTap: () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) => AdvanceDetailsScreen(
-                                                          floorName: floor.name,
-                                                          floorId: floor.id,
-                                                          themeColor: themeColor,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.account_balance_wallet_rounded,
-                                                        size: 16,
-                                                        color: themeColor,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Expanded(
-                                                        child: Text(
-                                                          AppLocalizations.of(context).showAdvanceDetails,
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            color: themeColor,
-    
-                                                          ),
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                if (actualStatus == 'pending') ...[
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      const Icon(Icons.hourglass_top_rounded, size: 16, color: Colors.orange),
-                                                      const SizedBox(width: 4),
-                                                      Expanded(
-                                                        child: Text(
-                                                          AppLocalizations.of(context).requestPending,
-                                                          style: TextStyle(
-                                                            color: Colors.orange,
-                                                            fontWeight: FontWeight.bold,
-                                                            fontSize: 13,
-                                                          ),
-                                                          overflow: TextOverflow.ellipsis,
-                                                        ),
-                                                      ),
-                                                      if (floor.tenant != null && floor.tenant == _apiService.currentUserId) ...[
-                                                        const SizedBox(width: 8),
-                                                        const Icon(Icons.touch_app, size: 16, color: Colors.orange),
-                                                        GestureDetector(
-                                  onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => PendingPaymentNotificationsScreen(
-                                            property: widget.property,
-                                            floor: floor,
-                                          ),
-                                        ),
-                                      );
-                                                          },
-                                                          child: Text(AppLocalizations.of(context).tapToView,
-                                                            style: TextStyle(color: Colors.orange, fontSize: 12)),
                                                         ),
                                                       ],
+                                                    ),
+                                                    const SizedBox(height: 6),
+                                                    // Rent information
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.attach_money_rounded,
+                                                          size: 16,
+                                                          color: _textSecondary,
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Expanded(
+                                                          child: Text(
+                                                            '${AppLocalizations.of(context).rent}: ${floor.rent} ${AppLocalizations.of(context).currency}',
+                                                            style: TextStyle(
+                                                              fontSize: 14,
+                                                              color: _textSecondary,
+                                                            ),
+                                                            overflow: TextOverflow.ellipsis,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    // Tenant information
+                                                    if (floor.tenant != null) ...[
+                                                      const SizedBox(height: 4),
+                                                      Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.person,
+                                                            size: 16,
+                                                            color: _textSecondary,
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Expanded(
+                                                            child: Text(
+                                                              '${AppLocalizations.of(context).tenant}: ${floor.tenantName ?? 'Unknown User'}',
+                                                              style: TextStyle(
+                                                                fontSize: 14,
+                                                                color: _textSecondary,
+                                                              ),
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
                                                     ],
+                                                    // Advance details button
+                                                    const SizedBox(height: 8),
+                                                    GestureDetector(
+                                                      onTap: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (context) => AdvanceDetailsScreen(
+                                                              floorName: floor.name,
+                                                              floorId: floor.id,
+                                                              themeColor: themeColor,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                      child: Row(
+                                                        children: [
+                                                          Icon(
+                                                            Icons.account_balance_wallet_rounded,
+                                                            size: 16,
+                                                            color: themeColor,
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Expanded(
+                                                            child: Text(
+                                                              AppLocalizations.of(context).showAdvanceDetails,
+                                                              style: TextStyle(
+                                                                fontSize: 14,
+                                                                color: themeColor,
+                                                              ),
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    if (actualStatus == 'pending') ...[
+                                                      const SizedBox(height: 4),
+                                                      Row(
+                                                        children: [
+                                                          const Icon(Icons.hourglass_top_rounded, size: 16, color: Colors.orange),
+                                                          const SizedBox(width: 4),
+                                                          Expanded(
+                                                            child: Text(
+                                                              AppLocalizations.of(context).requestPending,
+                                                              style: TextStyle(
+                                                                color: Colors.orange,
+                                                                fontWeight: FontWeight.bold,
+                                                                fontSize: 13,
+                                                              ),
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                          if (floor.tenant != null && floor.tenant == _apiService.currentUserId) ...[
+                                                            const SizedBox(width: 8),
+                                                            const Icon(Icons.touch_app, size: 16, color: Colors.orange),
+                                                            GestureDetector(
+                                                              onTap: () {
+                                                                Navigator.push(
+                                                                  context,
+                                                                  MaterialPageRoute(
+                                                                    builder: (context) => PendingPaymentNotificationsScreen(
+                                                                      property: widget.property,
+                                                                      floor: floor,
+                                                                    ),
+                                                                  ),
+                                                                );
+                                                              },
+                                                              child: Text(AppLocalizations.of(context).tapToView,
+                                                                style: TextStyle(color: Colors.orange, fontSize: 12)),
+                                                            ),
+                                                          ],
+                                                        ],
+                                                      ),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              if (_isManager)
+                                                Column(
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(Icons.edit, color: Colors.blue),
+                                                      onPressed: () async {
+                                                        await _showUpdateFloorDialog(floor);
+                                                      },
+                                                    ),
+                                                    if (floor.tenant != null)
+                                                      IconButton(
+                                                        icon: const Icon(Icons.person_remove, color: Colors.red),
+                                                        onPressed: () async {
+                                                          await _showRemoveTenantDialog(floor);
+                                                        },
+                                                      )
+                                                    else if (actualStatus == 'pending' && floor.notificationId != null)
+                                                      IconButton(
+                                                        icon: const Icon(Icons.cancel, color: Colors.orange),
+                                                        onPressed: () async {
+                                                          await _showCancelRequestDialog(floor);
+                                                        },
+                                                      )
+                                                    else
+                                                      IconButton(
+                                                        icon: const Icon(Icons.person_add, color: Colors.green),
+                                                        onPressed: () async {
+                                                          await _showTenantRequestDialog(floor);
+                                                        },
+                                                      ),
+                                                    // Advance payment icon for managers
+                                                    // Only show as pending if there's actually an advance payment pending
+                                                    // AND there's no tenant request pending (status != 'pending')
+                                                    if (floor.hasPendingAdvancePayment && actualStatus != 'pending')
+                                                      IconButton(
+                                                        icon: const Icon(Icons.cancel, color: Colors.red),
+                                                        onPressed: () async {
+                                                          await _showCancelAdvancePaymentDialog(floor);
+                                                        },
+                                                      )
+                                                    else
+                                                      IconButton(
+                                                        icon: const Icon(Icons.account_balance_wallet_rounded, color: Colors.orange),
+                                                        onPressed: () async {
+                                                          await _showAdvancePaymentDialog(floor);
+                                                        },
+                                                      ),
+                                                  ],
+                                                ),
+                                            ],
+                                          ),
+                                        ),
+                                        // Payment button for tenants
+                                        if (floor.tenant != null && floor.tenant == _apiService.currentUserId)
+                                          Padding(
+                                            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
+                                            child: SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton.icon(
+                                                icon: const Icon(Icons.payment_rounded),
+                                                label: Text(AppLocalizations.of(context).sendPaymentNotification),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: _themeColor,
+                                                  foregroundColor: Colors.white,
+                                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius: BorderRadius.circular(12),
                                                   ),
-                                                ],
-                                              ],
+                                                  elevation: 0,
+                                                ),
+                                                onPressed: () async {
+                                                  await _showSendPaymentDialog(floor);
+                                                },
+                                              ),
                                             ),
                                           ),
-                                          const SizedBox(width: 8),
-                                          if (_isManager)
-                                            Column(
-                                    children: [
-                                      IconButton(
-                                        icon: const Icon(Icons.edit, color: Colors.blue),
-                                        onPressed: () => _showUpdateFloorDialog(floor),
-                                      ),
-                                      if (floor.tenant != null)
-                                        IconButton(
-                                          icon: const Icon(Icons.person_remove, color: Colors.red),
-                                          onPressed: () => _showRemoveTenantDialog(floor),
-                                        )
-                                                else if (actualStatus == 'pending' && floor.notificationId != null)
-                                        IconButton(
-                                          icon: const Icon(Icons.cancel, color: Colors.orange),
-                                          onPressed: () => _showCancelRequestDialog(floor),
-                                        )
-                                      else
-                                        IconButton(
-                                          icon: const Icon(Icons.person_add, color: Colors.green),
-                                          onPressed: () => _showTenantRequestDialog(floor),
-                                        ),
-                                      // Advance payment icon for managers
-                                      if (floor.hasPendingAdvancePayment)
-                                        IconButton(
-                                          icon: const Icon(Icons.cancel, color: Colors.red),
-                                          onPressed: () => _showCancelAdvancePaymentDialog(floor),
-                                        )
-                                      else
-                                        IconButton(
-                                          icon: const Icon(Icons.account_balance_wallet_rounded, color: Colors.orange),
-                                          onPressed: () => _showAdvancePaymentDialog(floor),
-                                        ),
-                                    ],
-                                ),
-                                        ],
-                                      ),
-                                ),
-                                    // Payment button for tenants
-                                if (floor.tenant != null && floor.tenant == _apiService.currentUserId)
-                                  Padding(
-                                        padding: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
-                                    child: SizedBox(
-                                      width: double.infinity,
-                                      child: ElevatedButton.icon(
-                                            icon: const Icon(Icons.payment_rounded),
-                                        label: Text(AppLocalizations.of(context).sendPaymentNotification),
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: _themeColor,
-                                              foregroundColor: Colors.white,
-                                              padding: const EdgeInsets.symmetric(vertical: 16),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
-                                              ),
-                                              elevation: 0,
-                                            ),
-                                        onPressed: () {
-                                          _showSendPaymentDialog(floor);
-                                        },
-                                      ),
+                                      ],
                                     ),
                                   ),
-                              ],
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                              );
+                            },
+                          )
+                        : const Center(
+                            child: Text('No floors available'),
+                          ),
       ),
       floatingActionButton: _isManager ? FloatingActionButton.extended(
-        onPressed: _showAddFloorDialog,
+        onPressed: () async {
+          await _showAddFloorDialog();
+        },
         backgroundColor: _themeColor,
         foregroundColor: Colors.white,
         elevation: 8,

@@ -8,6 +8,7 @@ import 'screens/notifications_screen.dart';
 import 'services/localization_service.dart';
 import 'services/notification_service.dart';
 import 'utils/app_localizations.dart';
+import 'providers/chat_provider.dart';
 
 // Global navigation key for handling notification navigation
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -15,10 +16,14 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize notification service
-  await NotificationService.initialize();
-  
+  // Run app immediately - initialize notifications in background
   runApp(const MyApp());
+  
+  // Initialize notification service in background (non-blocking)
+  NotificationService.initialize().catchError((e) {
+    print('Error initializing NotificationService: $e');
+    // App continues to work without notifications
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -30,6 +35,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => LocalizationService()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
       ],
       child: Consumer<LocalizationService>(
         builder: (context, localizationService, child) {

@@ -8,6 +8,7 @@ import (
 	"go-rent/scheduler"
 	"log"
 	"net/http"
+	"os"
 	"time"
 	"github.com/gorilla/mux"
 	"github.com/robfig/cron/v3"
@@ -40,6 +41,10 @@ func main() {
 	// Public routes (no authentication required)
 	router.HandleFunc("/login", handlers.LoginHandler).Methods("POST")
 	router.HandleFunc("/register", handlers.RegisterHandler).Methods("POST")
+	
+	// Chatbot routes (public for now, can be made protected if needed)
+	router.HandleFunc("/chat", handlers.ChatHandler).Methods("POST", "OPTIONS")
+	router.HandleFunc("/chat/health", handlers.ChatHealthHandler).Methods("GET")
 
 	// Protected routes (authentication required)
 	// Apply auth middleware to all protected routes
@@ -114,15 +119,23 @@ func main() {
 		return nil
 	})
 	
+	// Get port from environment variable or use default
+	port := ":8080"
+	if envPort := os.Getenv("PORT"); envPort != "" {
+		port = ":" + envPort
+	} else if envPort := os.Getenv("SERVER_PORT"); envPort != "" {
+		port = ":" + envPort
+	}
+
 	// Create server with timeouts
 	server := &http.Server{
-		Addr:         ":8080",
+		Addr:         port,
 		Handler:      router,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	fmt.Println("Server starting on http://192.168.0.230:8080")
+	fmt.Printf("Server starting on http://192.168.0.230%s\n", port)
 	log.Fatal(server.ListenAndServe())
 }

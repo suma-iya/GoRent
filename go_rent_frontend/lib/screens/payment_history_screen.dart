@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../models/property.dart';
 import '../models/floor.dart';
 import '../services/api_service.dart';
@@ -84,6 +87,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          if (_payments.isNotEmpty && !_isLoading && _error == null)
+            IconButton(
+              icon: const Icon(Icons.download_rounded, color: Colors.white),
+              tooltip: 'Download Payment History',
+              onPressed: _downloadPaymentHistory,
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             onPressed: _loadPaymentHistory,
@@ -450,5 +459,135 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _downloadPaymentHistory() async {
+    if (_payments.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('No payment history to download'),
+          backgroundColor: Colors.red.shade400,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Generate CSV content
+      final csvContent = _generateCSV();
+
+      // Get temporary directory
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.')[0];
+      final fileName = 'payment_history_${widget.property.name.replaceAll(' ', '_')}_${widget.floor.name.replaceAll(' ', '_')}_$timestamp.csv';
+      final filePath = '${directory.path}/$fileName';
+
+      // Write CSV to file
+      final file = File(filePath);
+      await file.writeAsString(csvContent);
+
+      // Close loading dialog
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Share the file
+      final xFile = XFile(filePath);
+      await Share.shareXFiles(
+        [xFile],
+        subject: 'Payment History - ${widget.property.name} - ${widget.floor.name}',
+        text: 'Payment history export from ${widget.property.name} - Floor ${widget.floor.name}',
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Payment history downloaded successfully'),
+            backgroundColor: _primaryColor,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      print('Error downloading payment history: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error downloading payment history: ${e.toString()}'),
+            backgroundColor: Colors.red.shade400,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  String _generateCSV() {
+    final buffer = StringBuffer();
+
+    // CSV Header
+    buffer.writeln('Month,Due Rent (TK),Received Money (TK),Balance (TK),Created At,Property,Floor');
+
+    // CSV Rows
+    for (final payment in _payments) {
+      final month = payment['month'] as String? ?? '';
+      final dueRent = (payment['rent'] as num?)?.toDouble() ?? 0.0;
+      final receivedMoney = (payment['received_money'] as num?)?.toDouble() ?? 0.0;
+      final balance = dueRent - receivedMoney;
+      final createdAt = payment['created_at'] as String? ?? '';
+      final propertyName = widget.property.name;
+      final floorName = widget.floor.name;
+
+      // Escape commas and quotes in CSV
+      String escapeCSV(String value) {
+        if (value.contains(',') || value.contains('"') || value.contains('\n')) {
+          return '"${value.replaceAll('"', '""')}"';
+        }
+        return value;
+      }
+
+      buffer.writeln(
+        '${escapeCSV(month)},'
+        '${dueRent.toStringAsFixed(2)},'
+        '${receivedMoney.toStringAsFixed(2)},'
+        '${balance.toStringAsFixed(2)},'
+        '${escapeCSV(createdAt)},'
+        '${escapeCSV(propertyName)},'
+        '${escapeCSV(floorName)}',
+      );
+    }
+
+    // Add summary row
+    final totalDueRent = _payments.fold<double>(
+      0.0,
+      (sum, payment) => sum + ((payment['rent'] as num?)?.toDouble() ?? 0.0),
+    );
+    final totalReceived = _payments.fold<double>(
+      0.0,
+      (sum, payment) => sum + ((payment['received_money'] as num?)?.toDouble() ?? 0.0),
+    );
+    final totalBalance = totalDueRent - totalReceived;
+
+    buffer.writeln('');
+    buffer.writeln('TOTAL,,${totalDueRent.toStringAsFixed(2)},${totalReceived.toStringAsFixed(2)},${totalBalance.toStringAsFixed(2)},,');
+    buffer.writeln('');
+    buffer.writeln('Generated on: ${DateTime.now().toIso8601String()}');
+    buffer.writeln('Total Records: ${_payments.length}');
+
+    return buffer.toString();
   }
 } 

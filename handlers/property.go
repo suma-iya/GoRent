@@ -1811,15 +1811,15 @@ func DeleteNotificationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if user is the sender of the notification and if it's pending
-	var isSender bool
+	// Check if user is the sender or receiver of the notification and if it's pending
+	var canDelete bool
 	var floorID int64
 	var message string
 	err = db.QueryRow(`
 		SELECT EXISTS(
 			SELECT 1 FROM notification 
-			WHERE id = ? AND sender = ? AND status = 'pending'
-		)`, notificationID, userID).Scan(&isSender)
+			WHERE id = ? AND (sender = ? OR receiver = ?) AND status = 'pending'
+		)`, notificationID, userID, userID).Scan(&canDelete)
 	
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1827,7 +1827,7 @@ func DeleteNotificationHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isSender {
+	if !canDelete {
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode(TenantRequestResponse{false, "You can only delete your own pending notifications"})
 		return
@@ -1837,7 +1837,7 @@ func DeleteNotificationHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.QueryRow(`
 		SELECT fid, message
 		FROM notification 
-		WHERE id = ? AND sender = ? AND status = 'pending'`, notificationID, userID).Scan(&floorID, &message)
+		WHERE id = ? AND (sender = ? OR receiver = ?) AND status = 'pending'`, notificationID, userID, userID).Scan(&floorID, &message)
 	
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -1857,8 +1857,8 @@ func DeleteNotificationHandler(w http.ResponseWriter, r *http.Request) {
 	// Delete the notification
 	_, err = tx.Exec(`
 		DELETE FROM notification 
-		WHERE id = ? AND sender = ? AND status = 'pending'`,
-		notificationID, userID)
+		WHERE id = ? AND (sender = ? OR receiver = ?) AND status = 'pending'`,
+		notificationID, userID, userID)
 	
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

@@ -4,14 +4,45 @@ import '../models/property.dart';
 import '../models/floor.dart';
 import '../models/notification.dart' as models;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:io';
 
 class ApiService {
-  static final ApiService _instance = ApiService._internal();
+    static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
   ApiService._internal();
-  // static const String baseUrl = 'http://172.29.118.148:8080';
-  // static const String baseUrl = 'http://10.98.246.148:8080';
-  static const String baseUrl = 'http://192.168.0.230:8080';
+
+  // Detect base URL dynamically
+  static String get baseUrl {
+    String url;
+    if (Platform.isAndroid) {
+      // For Android devices, we need to detect emulator vs physical device
+      // Emulators use 10.0.2.2 to access host machine
+      // Physical devices need the Mac's actual IP address on the network
+      
+      // Try to detect emulator - emulators typically have "emulator" in device name
+      // or we can check environment variables
+      final androidSerial = Platform.environment['ANDROID_SERIAL'] ?? '';
+      final isEmulator = androidSerial.contains('emulator') || 
+                        androidSerial.startsWith('emulator-');
+      
+      if (isEmulator) {
+        url = 'http://10.0.2.2:8081'; // Emulator: use special IP
+      } else {
+        // Physical device: use your Mac's IP address
+        // IMPORTANT: Update this IP (192.168.0.232) to match your Mac's IP on your network
+        // Find your Mac's IP with: ipconfig getifaddr en0
+        url = 'http://192.168.0.232:8081'; // Physical device: use Mac's IP
+      }
+    } else if (Platform.isIOS) {
+      // iOS Simulator can use localhost directly
+      url = 'http://localhost:8081'; // Docker backend on port 8081
+    } else {
+      // Web or desktop (debug)
+      url = 'http://localhost:8081'; // Docker backend on port 8081
+    }
+    print('Using base URL: $url (Android Serial: ${Platform.environment['ANDROID_SERIAL'] ?? 'not set'})');
+    return url;
+  }
   String? _sessionToken;
   final _client = http.Client();
   int? _currentUserId;
@@ -1218,7 +1249,15 @@ class ApiService {
         _sessionToken = null; // Clear invalid session token
         throw Exception('Session expired. Please login again.');
       } else {
-        throw Exception('Server returned status code ${response.statusCode}');
+        // Try to parse error message from response
+        try {
+          final Map<String, dynamic> errorData = json.decode(response.body);
+          final errorMessage = errorData['message'] ?? 'Unknown error';
+          throw Exception(errorMessage);
+        } catch (parseError) {
+          // If parsing fails, use generic error
+          throw Exception('Server returned status code ${response.statusCode}');
+        }
       }
     } catch (e) {
       print('Error creating payment: $e');

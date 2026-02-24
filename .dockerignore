@@ -1,0 +1,15 @@
+go_rent_frontend/
+*.log
+*.sql
+main
+go-rent
+.git/
+.vscode/
+.idea/
+*.md
+!README.md
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+
