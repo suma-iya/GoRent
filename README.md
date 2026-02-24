@@ -165,7 +165,7 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 
 | Login | Registration |
 |:-----:|:-----------:|
-| ![Login](screenshots/login.jpg) | ![Register](screenshots/register.jpeg) |
+| ![Login](screenshots/login.jpg) | ![Register](screenshots/register.jpg) |
 
 ### Property Management
 
@@ -175,9 +175,9 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 
 ### Payment Management
 
-| Payment Details | Payment History | Send Payment |
-|:--------------:|:---------------:|:------------:|
-| ![Payment Details](screenshots/paymentDetails.jpg) | ![Payment History](screenshots/paymentHistory.jpg) | ![Send Payment](screenshots/sendAdvancePaymentRequest.jpg) |
+ | Payment History |
+|:--------------:|
+| ![Payment History](screenshots/paymentHistory.jpg) |
 
 ### AI Chatbot
 
