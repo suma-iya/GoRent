@@ -1,10 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/home_screen.dart';
+import 'screens/properties_screen.dart';
+import 'screens/notifications_screen.dart';
+import 'services/localization_service.dart';
+import 'services/notification_service.dart';
+import 'utils/app_localizations.dart';
+import 'providers/chat_provider.dart';
 
-void main() {
+// Global navigation key for handling notification navigation
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Run app immediately - initialize notifications in background
   runApp(const MyApp());
+  
+  // Initialize notification service in background (non-blocking)
+  NotificationService.initialize().catchError((e) {
+    print('Error initializing NotificationService: $e');
+    // App continues to work without notifications
+  });
 }
 
 class MyApp extends StatelessWidget {
@@ -13,33 +32,36 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Go Rent',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a blue toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => LocalizationService()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+      ],
+      child: Consumer<LocalizationService>(
+        builder: (context, localizationService, child) {
+          return MaterialApp(
+            navigatorKey: navigatorKey,
+            title: 'Go Rent',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+              useMaterial3: true,
+            ),
+            locale: localizationService.currentLocale,
+            supportedLocales: LocalizationService.supportedLocales,
+            localizationsDelegates: [
+              ...LocalizationService.localizationsDelegates,
+              const AppLocalizationsDelegate(),
+            ],
+            initialRoute: '/login',
+            routes: {
+              '/login': (context) => const LoginScreen(),
+              '/register': (context) => const RegisterScreen(),
+              '/home': (context) => const PropertiesScreen(),
+              '/notifications': (context) => const NotificationsScreen(),
+            },
+          );
+        },
       ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => const LoginScreen(),
-        '/register': (context) => const RegisterScreen(),
-        '/home': (context) => const HomeScreen(),
-      },
     );
   }
 }

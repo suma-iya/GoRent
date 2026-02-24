@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/notification_service.dart';
 import 'properties_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -38,12 +39,28 @@ class _LoginScreenState extends State<LoginScreen> {
       // Format phone number as +880 XXXX-XXXXXX
       final phoneNumber = '+880 ${_phoneController.text.substring(0, 4)}-${_phoneController.text.substring(4)}';
       
-      final success = await _apiService.login(
+      final loginResult = await _apiService.login(
         phoneNumber,
         _passwordController.text,
       );
 
-      if (success && mounted) {
+      if (loginResult != null && loginResult['success'] == true && mounted) {
+        // Set the current user ID after login using the actual userId from backend
+        final userId = loginResult['user_id'];
+        await _apiService.setCurrentUserId(userId);
+        print('Set current user ID to: $userId');
+        
+        // Send FCM token to server after successful login
+        try {
+          await NotificationService.sendCurrentTokenToServer();
+          print('FCM token sent to server after login');
+        } catch (e) {
+          print('Error sending FCM token after login: $e');
+        }
+        
+        // Clear any pending initial notification message
+        NotificationService.clearPendingInitialMessage();
+        
         // Navigate to properties screen on success
         Navigator.pushAndRemoveUntil(
           context,

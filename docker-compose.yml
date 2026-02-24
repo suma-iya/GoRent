@@ -1,0 +1,47 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: rent-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: rent
+      MYSQL_USER: suma
+      MYSQL_PASSWORD: 'tMyc6mApj]wgzHl7'
+    ports:
+      - "3307:3306"  # Use 3307 on host to avoid conflict with local MySQL
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - rent-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rent-backend
+    ports:
+      - "8081:8080"  # Use 8081 on host to avoid conflict
+    environment:
+      - DB_HOST=host.docker.internal  # Connect to XAMPP MySQL on host machine
+      - DB_PORT=3306                   # XAMPP MySQL port
+      - DB_USER=suma
+      - DB_PASSWORD=tMyc6mApj]wgzHl7
+      - DB_NAME=rent
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Allows Docker to access host machine
+    networks:
+      - rent-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  rent-network:
+    driver: bridge
+
