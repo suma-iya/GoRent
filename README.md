@@ -133,7 +133,7 @@ The system reduces manual administrative overhead by approximately **60%** throu
   
 | Login Screen | Registration Screen |
 |:------------:|:------------------:|
-| ![Login](screenshots/login.png) | ![Register](screenshots/register.png) |
+| ![Login](screenshots/login.jpg) | ![Register](screenshots/register.jpg) |
 
 </div>
 
