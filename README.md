@@ -142,12 +142,11 @@ The system reduces manual administrative overhead by approximately **60%** throu
   
 | Managed Properties | Add Property | Property Details |
 |:------------------:|:------------:|:----------------:|
-| ![Properties](screenshots/properties.png) | ![Add Property](screenshots/add_property.png) | ![Property Details](screenshots/property_details.png) |
+| ![Properties](screenshots/propertyDetails.jpg) | ![Add Property](screenshots/add_property.jpg) |
 
 | Add Floor | Update Floor | Tenant Request |
 |:---------:|:------------:|:--------------:|
-| ![Add Floor](screenshots/add_floor.png) | ![Update Floor](screenshots/update_floor.png) | ![Tenant Request](screenshots/tenant_request.png) |
-
+| ![Add Floor](screenshots/addFloor.jpg) | ![Update Floor](screenshots/updateFloor.jpg) | 
 </div>
 
 ### Payment Management
@@ -155,11 +154,8 @@ The system reduces manual administrative overhead by approximately **60%** throu
   
 | Payment Details | Payment History | Send Payment |
 |:---------------:|:---------------:|:------------:|
-| ![Payment Details](screenshots/payment_details.png) | ![Payment History](screenshots/payment_history.png) | ![Send Payment](screenshots/send_payment.png) |
+| ![Payment Details](screenshots/paymentDetails.jpg) | ![Payment History](screenshots/paymentHistory.jpg) | ![Send Payment](screenshots/sendAdvancePaymentRequest.jpg) |
 
-| Adjust Due Rent | Advance Payment Request | Advance Details |
-|:---------------:|:----------------------:|:---------------:|
-| ![Adjust Rent](screenshots/adjust_rent.png) | ![Advance Request](screenshots/advance_request.png) | ![Advance Details](screenshots/advance_details.png) |
 
 </div>
 
@@ -168,11 +164,8 @@ The system reduces manual administrative overhead by approximately **60%** throu
   
 | Chat Interface | Risk Analysis | Monthly Summary |
 |:--------------:|:------------:|:---------------:|
-| ![Chat](screenshots/chat.png) | ![Risk Analysis](screenshots/risk_analysis.png) | ![Monthly Summary](screenshots/monthly_summary.png) |
+| ![Chat](screenshots/chat.jpg) | ![Risk Analysis](screenshots/risk_analysis.jpg) | ![Monthly Summary](screenshots/monthly_summary.jpg) |
 
-| Recommendations | High Risk Tenants | Tenant Comparison |
-|:---------------:|:----------------:|:-----------------:|
-| ![Recommendations](screenshots/recommendations.png) | ![High Risk](screenshots/high_risk.png) | ![Compare](screenshots/compare.png) |
 
 </div>
 
@@ -181,7 +174,7 @@ The system reduces manual administrative overhead by approximately **60%** throu
   
 | Notifications List | Notification Actions | Notification Accepted |
 |:------------------:|:-------------------:|:-------------------:|
-| ![Notifications](screenshots/notifications.png) | ![Notification Actions](screenshots/notification_actions.png) | ![Accepted](screenshots/notification_accepted.png) |
+| ![Notifications](screenshots/notification_action.jpg) | ![Notification Actions](screenshots/pushNotification.jpg) | ![Accepted](screenshots/notification_accepted.jpg) |
 
 </div>
 
@@ -190,7 +183,7 @@ The system reduces manual administrative overhead by approximately **60%** throu
   
 | Settings | Language Selection | Bengali UI |
 |:--------:|:------------------:|:----------:|
-| ![Settings](screenshots/settings.png) | ![Language](screenshots/language.png) | ![Bengali](screenshots/bengali_ui.png) |
+| ![Settings](screenshots/hamburgerMenu.jpg) | ![Bengali](screenshots/bengali_ui.jpg) |
 
 </div>
 
