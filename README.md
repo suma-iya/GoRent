@@ -1,19 +1,42 @@
-# 🏠 RentApp - Intelligent Property Rental Management System
-
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Flutter](https://img.shields.io/badge/Flutter-3.1.4+-02569B?logo=flutter)
-![Go](https://img.shields.io/badge/Go-1.20+-00ADD8?logo=go)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+<br/>
 
-**An AI-powered property rental management system with intelligent risk analysis, automated notifications, and comprehensive payment tracking.**
+```
+██████╗ ███████╗███╗   ██╗████████╗ █████╗ ██████╗ ██████╗
+██╔══██╗██╔════╝████╗  ██║╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗
+██████╔╝█████╗  ██╔██╗ ██║   ██║   ███████║██████╔╝██████╔╝
+██╔══██╗██╔══╝  ██║╚██╗██║   ██║   ██╔══██║██╔═══╝ ██╔═══╝
+██║  ██║███████╗██║ ╚████║   ██║   ██║  ██║██║     ██║
+╚═╝  ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝╚═╝     ╚═╝
+```
 
-[Features](#-key-features) • [Screenshots](#-screenshots) • [Tech Stack](#-tech-stack) • [Installation](#-installation) • [Usage](#-usage)
+### Intelligent Property Rental Management
 
-</div>
+<br/>
+
+[![Version](https://img.shields.io/badge/version-1.0.0-0ea5e9?style=for-the-badge&logo=semanticrelease&logoColor=white)](https://github.com/yourusername/rentApp)
+[![Flutter](https://img.shields.io/badge/Flutter-3.1.4+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
+[![Go](https://img.shields.io/badge/Go-1.20+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://golang.org)
+[![Firebase](https://img.shields.io/badge/Firebase-FCM-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
+[![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?style=for-the-badge&logo=mysql&logoColor=white)](https://mysql.com)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![License](https://img.shields.io/badge/License-MIT-22c55e?style=for-the-badge)](LICENSE)
+
+<br/>
+
+> **AI-powered property management** — automated payment tracking, intelligent tenant risk analysis,  
+> real-time push notifications, and a cross-platform mobile app in English & Bengali.
+
+<br/>
+
+[**Features**](#-key-features) · [**Screenshots**](#-screenshots) · [**Tech Stack**](#-tech-stack) · [**Installation**](#-installation) · [**API Docs**](#-api-documentation)
+
+<br/>
 
 ---
+
+</div>
 
 ## 📋 Table of Contents
 
@@ -33,239 +56,213 @@
 
 ## 🎯 Overview
 
-RentApp is a comprehensive property rental management system that combines traditional property management functionalities with **artificial intelligence-driven tenant risk analysis**. The system addresses critical challenges in property management by providing:
+RentApp is a comprehensive property rental management system that fuses traditional property management with **AI-driven tenant risk analysis**. Built for landlords and tenants alike, it eliminates the friction of manual administration through smart automation and real-time intelligence.
 
-- **Automated payment tracking** and risk assessment
-- **AI-powered chatbot** for intelligent tenant analysis
-- **Real-time notifications** via Firebase Cloud Messaging
-- **Cross-platform mobile application** (Android & iOS)
-- **Multi-language support** (English & Bengali)
+<br/>
 
-The system reduces manual administrative overhead by approximately **60%** through automation and intelligent analytics.
+<div align="center">
+
+| 🤖 AI Risk Analysis | 🔔 Real-Time Notifications | 📱 Cross-Platform | 🌐 Multi-Language |
+|:-------------------:|:---------------------------:|:-----------------:|:-----------------:|
+| Intelligent tenant scoring based on payment behaviour | Firebase Cloud Messaging push alerts | Android & iOS via Flutter | English & Bengali (বাংলা) |
+
+</div>
+
+<br/>
+
+> **~60% reduction** in manual administrative overhead through automation and intelligent analytics.
 
 ---
 
 ## ✨ Key Features
 
-### 🔐 User Management & Authentication
-- Secure JWT-based authentication system
-- Role-based access control (Manager/Tenant)
-- User registration with email and phone number
-- Password security with Bcrypt hashing
+<details>
+<summary><b>🔐 User Management & Authentication</b></summary>
+<br/>
 
-### 🏢 Property Management
-- Add and manage multiple properties
-- Property photo upload and display
-- Floor/unit management within properties
-- Set and update rent amounts
-- Track occupancy status (vacant, occupied, pending)
+- Secure **JWT-based** authentication system
+- **Role-based access control** — Manager & Tenant roles
+- User registration via email and phone number
+- Password security with **Bcrypt** hashing
 
-### 👥 Tenant Management
-- Send tenant requests via phone number
-- Accept/reject rental requests through notifications
-- Direct tenant assignment to floors/units
-- View tenant information and payment history
-- Tenant properties view for assigned properties
+</details>
 
-### 💰 Payment Management
-- Record and track rental payments
-- Complete payment history with timestamps
-- Late payment detection and tracking
-- Payment history export to CSV
-- Payment analytics and trends
+<details>
+<summary><b>🏢 Property & Tenant Management</b></summary>
+<br/>
 
-### 💳 Advance Payment System
-- Request advance payments from tenants
-- Accept/reject advance payment requests
-- Track advance payment history and status
-- Deduct advance payments from rent
-- Cancel pending advance payment requests
+- Add and manage multiple properties with photo uploads
+- Floor/unit management with rent amount configuration
+- Occupancy status tracking — vacant, occupied, pending
+- Send/accept/reject tenant requests via phone number
+- View tenant profiles and complete payment history
 
-### 🤖 AI-Powered Chatbot
-- **Intelligent Risk Analysis**: Tenant risk assessment based on payment history
-- **Intent Detection**: Natural language understanding for:
-  - Risk explanations (EXPLAIN_RISK)
-  - Action recommendations (RECOMMEND_ACTION)
-  - High-risk tenant listings (LIST_HIGH_RISK)
-  - Monthly summaries (MONTHLY_SUMMARY)
-  - Tenant comparisons (COMPARE_TENANTS)
-  - Payment history queries (PAYMENT_HISTORY)
-  - Lease renewal guidance (LEASE_RENEWAL)
-- **Risk Calculation Algorithm**: 
-  - Calculates risk probability based on late payments, average delay, and tenancy duration
-  - Risk levels: High (≥0.7), Medium (0.4-0.7), Low (<0.4)
-- **Phone Number Recognition**: Extracts and normalizes Bangladeshi phone numbers
-- **Markdown Support**: Rich text formatting in responses
-- **Suggested Follow-ups**: Contextual follow-up questions
-- **Chat History**: Persistent message history (last 100 messages)
+</details>
 
-### 🔔 Real-Time Notification System
-- Firebase Cloud Messaging push notifications
-- In-app notification center
-- Notification types:
-  - Tenant request notifications
-  - Payment reminders
-  - Payment confirmations
-  - Advance payment requests
-  - System notifications
-- Read/unread status tracking
-- Accept/reject actions directly from notifications
-- Automated monthly payment reminders (Cron jobs)
+<details>
+<summary><b>💰 Payment & Advance Payment System</b></summary>
+<br/>
 
-### 🌐 Multi-Language Support
-- English and Bengali (বাংলা) language support
-- Dynamic language switching without app restart
-- Fully localized UI elements and messages
+- Record and track rental payments with full timestamps
+- **Late payment detection** and tracking
+- Export payment history to **CSV**
+- Request, accept, reject, or cancel advance payments
+- Deduct advance payments from future rent automatically
 
-### 📊 Additional Features
-- CSV export for payment history
-- Share functionality for exported data
-- Settings and preferences management
-- Health check endpoints
-- Comprehensive error handling and logging
+</details>
+
+<details open>
+<summary><b>🤖 AI-Powered Chatbot</b></summary>
+<br/>
+
+The chatbot is the heart of RentApp — a natural language interface for instant tenant intelligence.
+
+**Supported Intents**
+
+| Intent | Example Query |
+|--------|--------------|
+| `EXPLAIN_RISK` | *"Why is T100 high risk?"* |
+| `RECOMMEND_ACTION` | *"What should I do for tenant 01712345678?"* |
+| `LIST_HIGH_RISK` | *"List all high risk tenants"* |
+| `MONTHLY_SUMMARY` | *"Show monthly summary"* |
+| `COMPARE_TENANTS` | *"Compare T100 and T087"* |
+| `PAYMENT_HISTORY` | *"Show payment history for T100"* |
+| `LEASE_RENEWAL` | *"Guide me on renewing T100's lease"* |
+
+**Risk Calculation Algorithm**
+
+```
+Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
+
+  ● High Risk   ≥ 0.7  🔴
+  ● Medium Risk  0.4 – 0.69  🟡
+  ● Low Risk    < 0.4  🟢
+```
+
+- Extracts and normalises **Bangladeshi phone numbers** automatically
+- **Markdown-rendered** rich responses with suggested follow-ups
+- Persistent **chat history** (last 100 messages)
+
+</details>
+
+<details>
+<summary><b>🔔 Notification System</b></summary>
+<br/>
+
+- **Firebase Cloud Messaging** push notifications
+- In-app notification centre with read/unread tracking
+- Accept/reject actions directly from notification banners
+- Automated **monthly payment reminders** via Cron jobs
+- Notification types: tenant requests, payment confirmations, advance payment alerts, system messages
+
+</details>
 
 ---
 
 ## 📸 Screenshots
 
-### Authentication & Registration
-<div align="center">
-  
-| Login Screen | Registration Screen |
-|:------------:|:------------------:|
-| ![Login](screenshots/login.jpg) | ![Register](screenshots/register.jpg) |
+### Authentication
 
-</div>
+| Login | Registration |
+|:-----:|:-----------:|
+| ![Login](screenshots/login.jpg) | ![Register](screenshots/register.jpeg) |
 
 ### Property Management
-<div align="center">
-  
-| Managed Properties | Add Property | Property Details |
-|:------------------:|:------------:|:----------------:|
-| ![Properties](screenshots/propertyDetails.jpg) | ![Add Property](screenshots/add_property.jpg) |
 
-| Add Floor | Update Floor | Tenant Request |
-|:---------:|:------------:|:--------------:|
-| ![Add Floor](screenshots/addFloor.jpg) | ![Update Floor](screenshots/updateFloor.jpg) | 
-</div>
+| Properties List | Add Property | Add Floor | Update Floor |
+|:--------------:|:------------:|:---------:|:------------:|
+| ![Properties](screenshots/propertyDetails.jpg) | ![Add Property](screenshots/add_property.jpg) | ![Add Floor](screenshots/addFloor.jpg) | ![Update Floor](screenshots/updateFloor.jpg) |
 
 ### Payment Management
-<div align="center">
-  
+
 | Payment Details | Payment History | Send Payment |
-|:---------------:|:---------------:|:------------:|
+|:--------------:|:---------------:|:------------:|
 | ![Payment Details](screenshots/paymentDetails.jpg) | ![Payment History](screenshots/paymentHistory.jpg) | ![Send Payment](screenshots/sendAdvancePaymentRequest.jpg) |
 
-
-</div>
-
 ### AI Chatbot
-<div align="center">
-  
+
 | Chat Interface | Risk Analysis | Monthly Summary |
-|:--------------:|:------------:|:---------------:|
+|:-------------:|:------------:|:---------------:|
 | ![Chat](screenshots/chat.jpg) | ![Risk Analysis](screenshots/risk_analysis.jpg) | ![Monthly Summary](screenshots/monthly_summary.jpg) |
 
-
-</div>
-
 ### Notifications
-<div align="center">
-  
-| Notifications List | Notification Actions | Notification Accepted |
-|:------------------:|:-------------------:|:-------------------:|
-| ![Notifications](screenshots/notification_action.jpg) | ![Notification Actions](screenshots/pushNotification.jpg) | ![Accepted](screenshots/notification_accepted.jpg) |
 
-</div>
+| Notifications List | Push Notification | Accepted |
+|:-----------------:|:-----------------:|:--------:|
+| ![Notifications](screenshots/notification_action.jpg) | ![Push Notification](screenshots/pushNotification.jpg) | ![Accepted](screenshots/notification_accepted.jpg) |
 
-### Settings & Localization
-<div align="center">
-  
-| Settings | Language Selection | Bengali UI |
-|:--------:|:------------------:|:----------:|
+### Settings & Localisation
+
+| Settings | Bengali UI |
+|:--------:|:---------:|
 | ![Settings](screenshots/hamburgerMenu.jpg) | ![Bengali](screenshots/bengali_ui.jpg) |
-
-</div>
 
 ---
 
 ## 🛠 Tech Stack
 
-### Backend
-- **Language**: Go (Golang) 1.20+
-- **Framework**: Gorilla Mux (HTTP router)
-- **Database**: MySQL 8.0
-- **Authentication**: JWT (JSON Web Tokens)
-- **Scheduling**: Cron jobs for automated tasks
-- **Containerization**: Docker & Docker Compose
+<div align="center">
 
-### Frontend
-- **Framework**: Flutter 3.1.4+
-- **State Management**: Provider pattern
-- **HTTP Client**: HTTP package
-- **Local Storage**: SharedPreferences
-- **Notifications**: Firebase Cloud Messaging
-- **Markdown**: Flutter Markdown
-- **Image Picker**: Image Picker
-- **Localization**: Flutter Localizations
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Mobile** | Flutter 3.1.4+ | Cross-platform Android & iOS |
+| **State** | Provider | Application state management |
+| **Notifications** | Firebase Cloud Messaging | Real-time push notifications |
+| **Backend** | Go (Golang) 1.20+ | REST API & business logic |
+| **Router** | Gorilla Mux | HTTP routing |
+| **Database** | MySQL 8.0 | Persistent data storage |
+| **Auth** | JWT + Bcrypt | Secure authentication |
+| **Scheduler** | Cron | Automated background tasks |
+| **DevOps** | Docker & Compose | Containerised deployment |
 
-### DevOps & Tools
-- **Containerization**: Docker, Docker Compose
-- **Version Control**: Git
-- **Database Management**: MySQL Workbench / XAMPP
-- **Development**: Android Studio, VS Code / Cursor
+</div>
 
 ---
 
 ## 🏗 Architecture
 
-The system follows a **three-tier architecture**:
+The system follows a clean **three-tier architecture**:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Presentation Layer                        │
-│  Flutter Mobile Application (Android/iOS)                     │
-│  - User Interface Components                                 │
-│  - State Management (Provider)                               │
-│  - API Service Layer                                         │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ HTTP/REST API
-┌──────────────────────▼──────────────────────────────────────┐
-│                    Application Layer                        │
-│  Go Backend Server                                          │
-│  - RESTful API Endpoints                                    │
-│  - Business Logic Handlers                                   │
-│  - Authentication & Authorization                           │
-│  - AI Chatbot Engine                                        │
-│  - Notification Service                                      │
-└──────────────────────┬──────────────────────────────────────┘
-                       │ SQL Queries
-┌──────────────────────▼──────────────────────────────────────┐
-│                      Data Layer                             │
-│  MySQL Database                                             │
-│  - User Management                                          │
-│  - Property & Floor Data                                     │
-│  - Payment Records                                          │
-│  - Notification History                                      │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│                  PRESENTATION LAYER                  │
+│           Flutter Mobile App  (Android / iOS)        │
+│      UI Components  ·  Provider  ·  API Services     │
+└─────────────────────────┬────────────────────────────┘
+                          │  HTTP / REST
+┌─────────────────────────▼────────────────────────────┐
+│                 APPLICATION LAYER                    │
+│                  Go Backend Server                   │
+│   REST Endpoints  ·  Auth  ·  AI Engine  ·  FCM     │
+└─────────────────────────┬────────────────────────────┘
+                          │  SQL
+┌─────────────────────────▼────────────────────────────┐
+│                    DATA LAYER                        │
+│                   MySQL Database                     │
+│   Users  ·  Properties  ·  Payments  ·  Notifications│
+└──────────────────────────────────────────────────────┘
 ```
 
-### Component Architecture
+### Module Breakdown
 
 **Backend (Go)**
-- `handlers/` - HTTP request handlers
-- `middleware/` - Authentication, CORS, rate limiting
-- `models/` - Data structures
-- `config/` - Database configuration
-- `utils/` - Utility functions (JWT, ID generation)
-- `scheduler/` - Background task scheduling
+```
+handlers/    — HTTP request handlers per domain
+middleware/  — JWT auth, CORS, rate limiting
+models/      — Data structures
+config/      — Database & env configuration
+utils/       — JWT helpers, ID generation, CSRF
+scheduler/   — Cron-based background tasks
+```
 
 **Frontend (Flutter)**
-- `lib/screens/` - UI screens
-- `lib/services/` - API and notification services
-- `lib/providers/` - State management
-- `lib/models/` - Data models
-- `lib/utils/` - Utility functions
+```
+lib/screens/   — All UI screens
+lib/services/  — API & Firebase notification services
+lib/providers/ — State management
+lib/models/    — Data models
+lib/utils/     — Utility helpers & localization
+```
 
 ---
 
@@ -273,104 +270,82 @@ The system follows a **three-tier architecture**:
 
 ### Prerequisites
 
-- **Go** 1.20 or higher
-- **Flutter** 3.1.4 or higher
-- **MySQL** 8.0 or higher (or use Docker)
-- **Docker** and **Docker Compose** (optional, for containerized deployment)
-- **Firebase Account** (for push notifications)
+| Tool | Version |
+|------|---------|
+| Go | 1.20+ |
+| Flutter | 3.1.4+ |
+| MySQL | 8.0+ |
+| Docker & Compose | Latest *(optional)* |
+| Firebase Account | — *(for push notifications)* |
 
-### Backend Setup
+---
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/rentApp.git
-   cd rentApp
-   ```
-
-2. **Set up MySQL Database**
-   ```bash
-   # Option 1: Using Docker
-   docker-compose up -d mysql
-   
-   # Option 2: Using XAMPP or local MySQL
-   # Create database 'rent' and configure in config/database.go
-   ```
-
-3. **Configure Database**
-   - Update database credentials in `config/database.go`
-   - Or set environment variables:
-     ```bash
-     export DB_HOST=localhost
-     export DB_PORT=3306
-     export DB_USER=your_username
-     export DB_PASSWORD=your_password
-     export DB_NAME=rent
-     ```
-
-4. **Run Database Migrations**
-   ```bash
-   # Execute SQL files in order:
-   mysql -u your_user -p rent < create_user_table.sql
-   # ... (run other migration files as needed)
-   ```
-
-5. **Install Go Dependencies**
-   ```bash
-   go mod download
-   ```
-
-6. **Run the Backend Server**
-   ```bash
-   # Option 1: Direct execution
-   go run main.go
-   
-   # Option 2: Using Docker
-   docker-compose up -d backend
-   ```
-
-   The backend will start on `http://localhost:8080` (or `http://localhost:8081` with Docker)
-
-### Frontend Setup
-
-1. **Navigate to Frontend Directory**
-   ```bash
-   cd go_rent_frontend
-   ```
-
-2. **Install Flutter Dependencies**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Configure Firebase**
-   - Add `google-services.json` (Android) to `android/app/`
-   - Add `GoogleService-Info.plist` (iOS) to `ios/Runner/`
-   - Configure Firebase in `lib/firebase_options.dart`
-
-4. **Update API Base URL**
-   - For Android Emulator: `http://10.0.2.2:8081`
-   - For Physical Device: `http://YOUR_IP_ADDRESS:8081`
-   - Update in `lib/services/api_service.dart`
-
-5. **Run the Application**
-   ```bash
-   # Android
-   flutter run
-   
-   # iOS (macOS only)
-   flutter run -d ios
-   ```
-
-### Docker Setup (Complete Stack)
+### 🔧 Backend Setup
 
 ```bash
-# Start all services
+# 1. Clone the repository
+git clone https://github.com/yourusername/rentApp.git
+cd rentApp
+
+# 2. Start MySQL (Docker)
+docker-compose up -d mysql
+# — OR — configure a local MySQL instance and create the 'rent' database
+
+# 3. Set environment variables
+export DB_HOST=localhost
+export DB_PORT=3306
+export DB_USER=your_username
+export DB_PASSWORD=your_password
+export DB_NAME=rent
+
+# 4. Run database migrations
+mysql -u your_user -p rent < create_user_table.sql
+# (run additional migration files as needed)
+
+# 5. Install Go dependencies
+go mod download
+
+# 6. Start the server
+go run main.go
+# Server runs at → http://localhost:8080
+```
+
+---
+
+### 📱 Frontend Setup
+
+```bash
+# 1. Navigate to the Flutter project
+cd go_rent_frontend
+
+# 2. Install dependencies
+flutter pub get
+
+# 3. Add Firebase config files
+#    Android → android/app/google-services.json
+#    iOS     → ios/Runner/GoogleService-Info.plist
+
+# 4. Set the API base URL in lib/services/api_service.dart
+#    Android Emulator : http://10.0.2.2:8081
+#    Physical Device  : http://YOUR_LOCAL_IP:8081
+
+# 5. Run the app
+flutter run           # Android
+flutter run -d ios    # iOS (macOS only)
+```
+
+---
+
+### 🐳 Docker — Full Stack
+
+```bash
+# Start everything
 docker-compose up -d
 
-# View logs
+# Tail logs
 docker-compose logs -f
 
-# Stop services
+# Tear down
 docker-compose down
 ```
 
@@ -380,71 +355,64 @@ docker-compose down
 
 ### For Property Managers
 
-1. **Register/Login**: Create an account or login with credentials
-2. **Add Properties**: Click "Add Property" to create new properties
-3. **Manage Floors**: Add floors/units and set rent amounts
-4. **Send Tenant Requests**: Send rental requests to tenants via phone number
-5. **Record Payments**: Track rental payments and view payment history
-6. **Request Advance Payments**: Send advance payment requests to tenants
-7. **Use AI Chatbot**: Ask questions about tenant risks and get recommendations
-8. **View Notifications**: Manage tenant requests and payment notifications
+1. **Register / Login** — Create an account or sign in
+2. **Add Properties** — Upload photos, configure units and floors
+3. **Invite Tenants** — Send rental requests via phone number
+4. **Record Payments** — Log rent payments and view full history
+5. **Advance Payments** — Request, approve, or cancel advance payments
+6. **AI Chatbot** — Query tenant risk, get action recommendations
+7. **Notifications** — Manage requests and payment alerts in real time
 
 ### For Tenants
 
-1. **Register/Login**: Create an account or login
-2. **View Properties**: See all properties where you're assigned
-3. **Accept/Reject Requests**: Respond to rental requests from managers
-4. **View Payment History**: Check your payment records
-5. **Manage Advance Payments**: Accept or reject advance payment requests
-6. **Receive Notifications**: Get real-time updates about payments and requests
-
-### AI Chatbot Usage
-
-The AI chatbot supports various queries:
-
-- **Risk Analysis**: "Why is T100 high risk?"
-- **Recommendations**: "What should I do for tenant 01712345678?"
-- **High-Risk List**: "List high risk tenants"
-- **Monthly Summary**: "Show monthly summary"
-- **Tenant Comparison**: "Compare T100 and T087"
-- **Payment History**: "Show payment history for T100"
+1. **Register / Login** — Create your tenant account
+2. **View Properties** — See all properties you're assigned to
+3. **Respond to Requests** — Accept or reject rental invitations
+4. **Payment History** — Review all your recorded payments
+5. **Advance Payments** — Approve or decline advance payment requests
+6. **Notifications** — Receive real-time updates from your manager
 
 ---
 
 ## 📚 API Documentation
 
-### Authentication Endpoints
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/login` | User login |
+| `POST` | `/register` | User registration |
 
-- `POST /login` - User login
-- `POST /register` - User registration
+### Properties
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/properties` | List user properties |
+| `GET` | `/property/{id}` | Get property details |
+| `POST` | `/property` | Create property |
+| `GET` | `/property/{id}/floor` | List floors |
+| `POST` | `/property/{id}/floor` | Add floor |
+| `PUT` | `/property/{id}/floor/{floor_id}` | Update floor |
 
-### Property Endpoints
+### Payments
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/property/{id}/floor/{floor_id}/payment` | Record payment |
+| `GET` | `/floor/{floor_id}/payment-history` | Get payment history |
+| `POST` | `/property/{id}/floor/{floor_id}/advance-payment` | Request advance |
 
-- `GET /properties` - Get user's properties
-- `GET /property/{id}` - Get property details
-- `POST /property` - Create new property
-- `GET /property/{id}/floor` - Get floors for property
-- `POST /property/{id}/floor` - Add new floor
-- `PUT /property/{id}/floor/{floor_id}` - Update floor
+### Notifications
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/notifications` | Get notifications |
+| `POST` | `/notifications/action` | Handle action |
+| `POST` | `/notifications/mark-read` | Mark as read |
 
-### Payment Endpoints
+### Chatbot
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/chat` | Send message |
+| `GET` | `/chat/health` | Health check |
 
-- `POST /property/{id}/floor/{floor_id}/payment` - Record payment
-- `GET /floor/{floor_id}/payment-history` - Get payment history
-- `POST /property/{id}/floor/{floor_id}/advance-payment` - Request advance payment
-
-### Notification Endpoints
-
-- `GET /notifications` - Get user notifications
-- `POST /notifications/action` - Handle notification actions
-- `POST /notifications/mark-read` - Mark notifications as read
-
-### Chatbot Endpoints
-
-- `POST /chat` - Send chat message
-- `GET /chat/health` - Chatbot health check
-
-For complete API documentation, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+> For the full API reference, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 
 ---
 
@@ -452,74 +420,99 @@ For complete API documentation, see [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 
 ```
 rentApp/
-├── config/                 # Database configuration
+├── config/                     # DB config & Firebase credentials
 │   ├── database.go
 │   └── firebase-service-account.json
-├── handlers/               # HTTP request handlers
-│   ├── chatbot.go         # AI chatbot handler
-│   ├── login.go           # Authentication handler
-│   ├── property.go        # Property management handler
-│   ├── notification.go   # Notification handler
-│   └── register.go       # Registration handler
-├── middleware/            # Middleware functions
-│   └── auth.go           # JWT authentication
-├── models/                # Data models
+│
+├── handlers/                   # HTTP request handlers
+│   ├── chatbot.go              # AI chatbot engine
+│   ├── login.go
+│   ├── register.go
+│   ├── property.go
+│   └── notification.go
+│
+├── middleware/
+│   └── auth.go                 # JWT authentication
+│
+├── models/
 │   └── user.go
-├── scheduler/             # Background tasks
-│   └── scheduler.go
-├── utils/                 # Utility functions
+│
+├── scheduler/
+│   └── scheduler.go            # Cron jobs (payment reminders)
+│
+├── utils/
 │   ├── jwt.go
 │   ├── id.go
 │   └── csrf.go
-├── go_rent_frontend/      # Flutter mobile app
+│
+├── go_rent_frontend/           # Flutter mobile application
 │   ├── lib/
-│   │   ├── screens/       # UI screens
-│   │   ├── services/     # API services
-│   │   ├── providers/    # State management
-│   │   ├── models/       # Data models
-│   │   └── utils/        # Utilities
-│   ├── android/          # Android configuration
-│   ├── ios/              # iOS configuration
-│   └── pubspec.yaml      # Flutter dependencies
-├── main.go               # Backend entry point
-├── go.mod                # Go dependencies
-├── docker-compose.yml    # Docker configuration
-├── Dockerfile           # Docker image definition
-└── README.md            # This file
+│   │   ├── screens/            # All UI screens
+│   │   ├── services/           # API & FCM services
+│   │   ├── providers/          # State management
+│   │   ├── models/             # Data models
+│   │   └── utils/              # Helpers & localisation
+│   ├── android/
+│   ├── ios/
+│   └── pubspec.yaml
+│
+├── main.go                     # Backend entry point
+├── go.mod
+├── docker-compose.yml
+├── Dockerfile
+└── README.md
 ```
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
+Contributions are very welcome! Here's how to get started:
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+```bash
+# Fork → clone → branch
+git checkout -b feature/your-feature-name
 
-### Development Guidelines
+# Make your changes, then commit
+git commit -m "feat: add amazing feature"
 
-- Follow Go and Flutter best practices
-- Write meaningful commit messages
-- Add comments for complex logic
-- Update documentation for new features
-- Test your changes thoroughly
+# Push and open a Pull Request
+git push origin feature/your-feature-name
+```
+
+**Guidelines**
+- Follow idiomatic Go and Flutter conventions
+- Write clear, descriptive commit messages
+- Comment complex logic
+- Update documentation alongside code changes
+- Test your changes before submitting
+
+---
+
+## 📊 Project Statistics
+
+<div align="center">
+
+| Metric | Value |
+|--------|-------|
+| ⚡ Avg API Response Time | 50 – 150 ms |
+| 🚀 App Startup Time | < 3 seconds |
+| 🤖 Chatbot Intent Accuracy | ~90% |
+| 📉 Admin Overhead Reduction | ~60% |
+
+</div>
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 👨‍💻 Author
 
 **Your Name**
-
 - GitHub: [@yourusername](https://github.com/yourusername)
 - Email: your.email@example.com
 
@@ -527,26 +520,21 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- Flutter team for the amazing framework
-- Go community for excellent libraries
-- Firebase for push notification services
-- All contributors and users of this project
-
----
-
-## 📊 Project Statistics
-
-- **Backend Performance**: Average API response time 50-150ms
-- **Frontend Performance**: App startup time <3 seconds
-- **Chatbot Accuracy**: Intent detection ~90%
-- **Efficiency Improvement**: ~60% reduction in manual administrative overhead
+- [Flutter](https://flutter.dev) team for the incredible cross-platform framework
+- The [Go](https://golang.org) community for excellent libraries and tooling
+- [Firebase](https://firebase.google.com) for seamless push notification infrastructure
+- Every contributor and user who has supported this project
 
 ---
 
 <div align="center">
 
-**⭐ If you find this project helpful, please give it a star! ⭐**
+<br/>
 
-Made with ❤️ using Flutter and Go
+**If RentApp saved you time, drop a ⭐ — it means a lot!**
+
+<br/>
+
+*Made with ❤️ using Flutter & Go*
 
 </div>
