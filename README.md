@@ -502,8 +502,8 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ## 👨‍💻 Author
 
 **Your Name**
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Email: your.email@example.com
+- GitHub: [@suma-iya](https://github.com/suma-iya)
+- Email: sumaiya.rahim234@gmail.com
 
 ---
 
@@ -520,7 +520,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 <br/>
 
-**If RentApp saved you time, drop a ⭐ — it means a lot!**
+**If GoRent saved you time, drop a ⭐ — it means a lot!**
 
 <br/>
 
