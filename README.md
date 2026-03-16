@@ -112,13 +112,13 @@ The chatbot is the heart of RentApp — a natural language interface for instant
 
 | Intent | Example Query |
 |--------|--------------|
-| `EXPLAIN_RISK` | *"Why is T100 high risk?"* |
+| `EXPLAIN_RISK` | *"Why is 01712345678 high risk?"* |
 | `RECOMMEND_ACTION` | *"What should I do for tenant 01712345678?"* |
 | `LIST_HIGH_RISK` | *"List all high risk tenants"* |
 | `MONTHLY_SUMMARY` | *"Show monthly summary"* |
-| `COMPARE_TENANTS` | *"Compare T100 and T087"* |
-| `PAYMENT_HISTORY` | *"Show payment history for T100"* |
-| `LEASE_RENEWAL` | *"Guide me on renewing T100's lease"* |
+| `COMPARE_TENANTS` | *"Compare 01712345678 and 01712345679"* |
+
+
 
 **Risk Calculation Algorithm**
 
