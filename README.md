@@ -6,7 +6,7 @@
 
 <br/>
 
-[![Version](https://img.shields.io/badge/version-1.0.0-0ea5e9?style=for-the-badge&logo=semanticrelease&logoColor=white)](https://github.com/yourusername/rentApp)
+[![Version](https://img.shields.io/badge/version-1.0.0-0ea5e9?style=for-the-badge&logo=semanticrelease&logoColor=white)](https://github.com/suma-iya/GoRent)
 [![Flutter](https://img.shields.io/badge/Flutter-3.1.4+-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Go](https://img.shields.io/badge/Go-1.20+-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://golang.org)
 [![Firebase](https://img.shields.io/badge/Firebase-FCM-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
@@ -16,7 +16,7 @@
 
 <br/>
 
-> **AI-powered property management** — automated payment tracking, intelligent tenant risk analysis,  
+> **Rule-based property management** — automated payment tracking, transparent tenant risk assessment,  
 > real-time push notifications, and a cross-platform mobile app in English & Bengali.
 
 <br/>
@@ -47,21 +47,21 @@
 
 ## 🎯 Overview
 
-RentApp is a comprehensive property rental management system that fuses traditional property management with **AI-driven tenant risk analysis**. Built for landlords and tenants alike, it eliminates the friction of manual administration through smart automation and real-time intelligence.
+GoRent is a comprehensive property rental management system that combines traditional property management with **transparent, rule-based tenant risk assessment**. Built for landlords and tenants alike, it streamlines manual administration through smart automation and real-time intelligence.
 
 <br/>
 
 <div align="center">
 
-| 🤖 AI Risk Analysis | 🔔 Real-Time Notifications | 📱 Cross-Platform | 🌐 Multi-Language |
+| 🔍 Transparent Risk Analysis | 🔔 Real-Time Notifications | 📱 Cross-Platform | 🌐 Multi-Language |
 |:-------------------:|:---------------------------:|:-----------------:|:-----------------:|
-| Intelligent tenant scoring based on payment behaviour | Firebase Cloud Messaging push alerts | Android & iOS via Flutter | English & Bengali (বাংলা) |
+| Deterministic tenant scoring based on payment behavior | Firebase Cloud Messaging push alerts | Android & iOS via Flutter | English & Bengali (বাংলা) |
 
 </div>
 
 <br/>
 
-> **~60% reduction** in manual administrative overhead through automation and intelligent analytics.
+> **Streamlined workflow** through automation and transparent analytics.
 
 ---
 
@@ -103,10 +103,10 @@ RentApp is a comprehensive property rental management system that fuses traditio
 </details>
 
 <details open>
-<summary><b>🤖 AI-Powered Chatbot</b></summary>
+<summary><b>🤖 Rule-Based Conversational Interface</b></summary>
 <br/>
 
-The chatbot is the heart of RentApp — a natural language interface for instant tenant intelligence.
+The conversational interface provides natural language access to tenant analytics and payment data.
 
 **Supported Intents**
 
@@ -122,6 +122,8 @@ The chatbot is the heart of RentApp — a natural language interface for instant
 
 **Risk Calculation Algorithm**
 
+The system uses a deterministic, transparent scoring formula based on observable payment behavior:
+
 ```
 Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 
@@ -130,9 +132,11 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
   ● Low Risk    < 0.4  🟢
 ```
 
-- Extracts and normalises **Bangladeshi phone numbers** automatically
+- Extracts and normalizes **Bangladeshi phone numbers** automatically
 - **Markdown-rendered** rich responses with suggested follow-ups
 - Persistent **chat history** (last 100 messages)
+- **Rule-based intent detection** using pattern matching
+- **Template-based response generation** for consistent, auditable results
 
 </details>
 
@@ -141,7 +145,7 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 <br/>
 
 - **Firebase Cloud Messaging** push notifications
-- In-app notification centre with read/unread tracking
+- In-app notification center with read/unread tracking
 - Accept/reject actions directly from notification banners
 - Automated **monthly payment reminders** via Cron jobs
 - Notification types: tenant requests, payment confirmations, advance payment alerts, system messages
@@ -170,7 +174,7 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 |:--------------:|
 | ![Payment History](screenshots/paymentHistory.jpg) |
 
-### AI Chatbot
+### Conversational Interface
 
 | Chat Interface | Risk Analysis | Monthly Summary |
 |:-------------:|:------------:|:---------------:|
@@ -182,7 +186,7 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 |:-----------------:|:-----------------:|:--------:|
 | ![Notifications](screenshots/notification_action.jpg) | ![Push Notification](screenshots/pushNotification.jpg) | ![Accepted](screenshots/notification_accepted.jpg) |
 
-### Settings & Localisation
+### Settings & Localization
 
 | Settings | Bengali UI |
 |:--------:|:---------:|
@@ -204,7 +208,7 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 | **Database** | MySQL 8.0 | Persistent data storage |
 | **Auth** | JWT + Bcrypt | Secure authentication |
 | **Scheduler** | Cron | Automated background tasks |
-| **DevOps** | Docker & Compose | Containerised deployment |
+| **DevOps** | Docker & Compose | Containerized deployment |
 
 </div>
 
@@ -224,7 +228,7 @@ The system follows a clean **three-tier architecture**:
 ┌─────────────────────────▼────────────────────────────┐
 │                 APPLICATION LAYER                    │
 │                  Go Backend Server                   │
-│   REST Endpoints  ·  Auth  ·  AI Engine  ·  FCM     │
+│  REST Endpoints  ·  Auth  ·  Risk Engine  ·  FCM    │
 └─────────────────────────┬────────────────────────────┘
                           │  SQL
 ┌─────────────────────────▼────────────────────────────┐
@@ -275,8 +279,8 @@ lib/utils/     — Utility helpers & localization
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/rentApp.git
-cd rentApp
+git clone https://github.com/suma-iya/GoRent.git
+cd GoRent
 
 # 2. Start MySQL (Docker)
 docker-compose up -d mysql
@@ -351,7 +355,7 @@ docker-compose down
 3. **Invite Tenants** — Send rental requests via phone number
 4. **Record Payments** — Log rent payments and view full history
 5. **Advance Payments** — Request, approve, or cancel advance payments
-6. **AI Chatbot** — Query tenant risk, get action recommendations
+6. **Query Risk Analysis** — Use conversational interface for tenant risk insights
 7. **Notifications** — Manage requests and payment alerts in real time
 
 ### For Tenants
@@ -397,7 +401,7 @@ docker-compose down
 | `POST` | `/notifications/action` | Handle action |
 | `POST` | `/notifications/mark-read` | Mark as read |
 
-### Chatbot
+### Conversational Interface
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/chat` | Send message |
@@ -408,13 +412,13 @@ docker-compose down
 ## 📁 Project Structure
 
 ```
-rentApp/
+GoRent/
 ├── config/                     # DB config & Firebase credentials
 │   ├── database.go
 │   └── firebase-service-account.json
 │
 ├── handlers/                   # HTTP request handlers
-│   ├── chatbot.go              # AI chatbot engine
+│   ├── chatbot.go              # Rule-based conversational engine
 │   ├── login.go
 │   ├── register.go
 │   ├── property.go
@@ -440,7 +444,7 @@ rentApp/
 │   │   ├── services/           # API & FCM services
 │   │   ├── providers/          # State management
 │   │   ├── models/             # Data models
-│   │   └── utils/              # Helpers & localisation
+│   │   └── utils/              # Helpers & localization
 │   ├── android/
 │   ├── ios/
 │   └── pubspec.yaml
@@ -478,30 +482,15 @@ git push origin feature/your-feature-name
 
 ---
 
-## 📊 Project Statistics
-
-<div align="center">
-
-| Metric | Value |
-|--------|-------|
-| ⚡ Avg API Response Time | 50 – 150 ms |
-| 🚀 App Startup Time | < 3 seconds |
-| 🤖 Chatbot Intent Accuracy | ~90% |
-| 📉 Admin Overhead Reduction | ~60% |
-
-</div>
-
----
-
 ## 📄 License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Authors
 
-**Your Name**
+**Sumaiya Rahim Suma & Abdullah Al Shafi**
 - GitHub: [@suma-iya](https://github.com/suma-iya)
 - Email: sumaiya.rahim234@gmail.com
 
@@ -516,11 +505,27 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 ---
 
+## 📖 Citation
+
+If you use GoRent in your research, please cite:
+
+```bibtex
+@software{gorent2026,
+  author = {Suma, Sumaiya Rahim and Shafi, Abdullah Al},
+  title = {GoRent: Open-source software for transparent rule-based rental risk assessment},
+  year = {2026},
+  url = {https://github.com/suma-iya/GoRent},
+  version = {1.0.0}
+}
+```
+
+---
+
 <div align="center">
 
 <br/>
 
-**If GoRent saved you time, drop a ⭐ — it means a lot!**
+**If GoRent helped your research or project, please ⭐ the repository!**
 
 <br/>
 
