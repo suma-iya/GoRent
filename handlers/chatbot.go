@@ -33,6 +33,9 @@ type ChatbotTenant struct {
 	Notes               string  `json:"notes"`
 	CreatedAt           string  `json:"created_at"`
 	UpdatedAt           string  `json:"updated_at"`
+	// Enhanced risk factors
+	PartialPaymentRatio float64 `json:"partial_payment_ratio,omitempty"`
+	PaymentTrend        float64 `json:"payment_trend,omitempty"`
 }
 
 // ChatRequest represents a chat message from the user
@@ -264,6 +267,8 @@ func (rg *ResponseGenerator) initializeSampleData() {
 			CreditScore:         580,
 			ComplaintCount:      1,
 			PropertyDamageCount: 0,
+			PartialPaymentRatio: 0.10,
+			PaymentTrend:        2.0,
 			Notes:               "3 late payments in last 6 months",
 			CreatedAt:           time.Now().Format(time.RFC3339),
 			UpdatedAt:           time.Now().Format(time.RFC3339),
@@ -282,6 +287,8 @@ func (rg *ResponseGenerator) initializeSampleData() {
 			CreditScore:         720,
 			ComplaintCount:      0,
 			PropertyDamageCount: 0,
+			PartialPaymentRatio: 0.05,
+			PaymentTrend:        0.0,
 			Notes:               "1 late payment in last 12 months",
 			CreatedAt:           time.Now().Format(time.RFC3339),
 			UpdatedAt:           time.Now().Format(time.RFC3339),
@@ -300,6 +307,8 @@ func (rg *ResponseGenerator) initializeSampleData() {
 			CreditScore:         520,
 			ComplaintCount:      3,
 			PropertyDamageCount: 2,
+			PartialPaymentRatio: 0.30,
+			PaymentTrend:        3.0,
 			Notes:               "Multiple late payments and complaints",
 			CreatedAt:           time.Now().Format(time.RFC3339),
 			UpdatedAt:           time.Now().Format(time.RFC3339),
@@ -318,6 +327,8 @@ func (rg *ResponseGenerator) initializeSampleData() {
 			CreditScore:         780,
 			ComplaintCount:      0,
 			PropertyDamageCount: 0,
+			PartialPaymentRatio: 0.0,
+			PaymentTrend:        0.0,
 			Notes:               "Excellent payment history",
 			CreatedAt:           time.Now().Format(time.RFC3339),
 			UpdatedAt:           time.Now().Format(time.RFC3339),
@@ -344,7 +355,7 @@ func (rg *ResponseGenerator) GetTenant(id string) (*ChatbotTenant, bool) {
 	return tenant, exists
 }
 
-// Get tenant by phone number from database
+// Get tenant by phone number from database - ENHANCED VERSION
 func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenant, error) {
 	db, err := config.GetDBConnection()
 	if err != nil {
@@ -356,7 +367,6 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 	normalizedPhone = strings.ReplaceAll(normalizedPhone, "-", "")
 	normalizedPhone = strings.TrimPrefix(normalizedPhone, "+880")
 	normalizedPhone = strings.TrimPrefix(normalizedPhone, "880")
-	// Remove leading 0 if present (Bangladeshi format: 01794002263 -> 1794002263)
 	if strings.HasPrefix(normalizedPhone, "0") && len(normalizedPhone) == 11 {
 		normalizedPhone = normalizedPhone[1:]
 	}
@@ -391,20 +401,22 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 		return nil, fmt.Errorf("error querying floor: %v", err)
 	}
 
-	// Calculate risk metrics from payment history
+	// Initialize variables
 	var previousLateCount int
 	var avgDelayDays float64
 	var lastPaymentDate sql.NullString
 	var currentRentAmount float64
 	var tenancyMonths int
+	var partialPaymentRatio float64
+	var paymentTrend float64
 
 	if floorID.Valid {
-		// Get current rent from floor if available
+		// Get current rent
 		if rent.Valid {
 			currentRentAmount = float64(rent.Int64)
 		}
 
-		// Calculate tenancy months from floor creation date
+		// Calculate tenancy months
 		if floorCreatedAt.Valid {
 			createdTime, err := time.Parse("2006-01-02 15:04:05", floorCreatedAt.String)
 			if err == nil {
@@ -412,20 +424,26 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 			}
 		}
 
-		// Calculate late payments (payments where received_money < rent)
+		// ✅ ENHANCED: Try comprehensive payment analysis first
+		var totalPayments sql.NullInt64
 		var lateCount sql.NullInt64
 		var avgDelay sql.NullFloat64
 		var lastPayment sql.NullString
+		var partialPayments sql.NullInt64
+		
 		err = db.QueryRow(`
 			SELECT 
-				COUNT(*) as late_count,
+				COUNT(*) as total_payments,
+				SUM(CASE WHEN recieved_money < rent THEN 1 ELSE 0 END) as late_count,
 				COALESCE(AVG(CASE WHEN recieved_money < rent THEN DATEDIFF(created_at, DATE_SUB(created_at, INTERVAL DAY(created_at)-1 DAY)) ELSE 0 END), 0) as avg_delay,
-				MAX(created_at) as last_payment
+				MAX(created_at) as last_payment,
+				SUM(CASE WHEN recieved_money > 0 AND recieved_money < rent THEN 1 ELSE 0 END) as partial_payments
 			FROM payment
-			WHERE fid = ? AND uid = ? AND recieved_money < rent
-		`, floorID.Int64, userID).Scan(&lateCount, &avgDelay, &lastPayment)
+			WHERE fid = ? AND uid = ?
+		`, floorID.Int64, userID).Scan(&totalPayments, &lateCount, &avgDelay, &lastPayment, &partialPayments)
 		
 		if err == nil {
+			// Successfully got enhanced metrics
 			if lateCount.Valid {
 				previousLateCount = int(lateCount.Int64)
 			}
@@ -435,15 +453,77 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 			if lastPayment.Valid {
 				lastPaymentDate = lastPayment
 			}
+			
+			// Calculate partial payment ratio
+			if totalPayments.Valid && totalPayments.Int64 > 0 && partialPayments.Valid {
+				partialPaymentRatio = float64(partialPayments.Int64) / float64(totalPayments.Int64)
+			}
+
+			// ✅ ENHANCED: Calculate payment trend
+			var recentLate sql.NullInt64
+			var olderLate sql.NullInt64
+			
+			err = db.QueryRow(`
+				SELECT 
+					SUM(CASE WHEN recieved_money < rent AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH) THEN 1 ELSE 0 END) as recent_late,
+					SUM(CASE WHEN recieved_money < rent AND created_at < DATE_SUB(NOW(), INTERVAL 3 MONTH) AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH) THEN 1 ELSE 0 END) as older_late
+				FROM payment
+				WHERE fid = ? AND uid = ?
+			`, floorID.Int64, userID).Scan(&recentLate, &olderLate)
+			
+			if err == nil {
+				// Payment trend: positive = getting worse, negative = improving
+				if recentLate.Valid && olderLate.Valid {
+					if olderLate.Int64 > 0 {
+						paymentTrend = float64(recentLate.Int64) - float64(olderLate.Int64)
+					} else if recentLate.Int64 > 0 {
+						paymentTrend = float64(recentLate.Int64)
+					}
+				}
+			} else {
+				log.Printf("Warning: Could not calculate payment trend: %v (using fallback)", err)
+			}
+
 		} else if err != sql.ErrNoRows {
-			log.Printf("Error calculating risk metrics: %v", err)
+			// ⚠️ FALLBACK: Use simple metrics if enhanced query fails
+			log.Printf("Warning: Enhanced metrics query failed, using simple fallback: %v", err)
+			
+			err = db.QueryRow(`
+				SELECT 
+					COUNT(*) as late_count,
+					COALESCE(AVG(CASE WHEN recieved_money < rent THEN DATEDIFF(created_at, DATE_SUB(created_at, INTERVAL DAY(created_at)-1 DAY)) ELSE 0 END), 0) as avg_delay,
+					MAX(created_at) as last_payment
+				FROM payment
+				WHERE fid = ? AND uid = ? AND recieved_money < rent
+			`, floorID.Int64, userID).Scan(&lateCount, &avgDelay, &lastPayment)
+			
+			if err == nil {
+				if lateCount.Valid {
+					previousLateCount = int(lateCount.Int64)
+				}
+				if avgDelay.Valid {
+					avgDelayDays = avgDelay.Float64
+				}
+				if lastPayment.Valid {
+					lastPaymentDate = lastPayment
+				}
+			} else if err != sql.ErrNoRows {
+				log.Printf("Error calculating even simple risk metrics: %v", err)
+			}
 		}
 	}
 
-	// Calculate risk probability based on metrics
-	riskProbability := rg.calculateRiskProbability(previousLateCount, avgDelayDays, tenancyMonths)
+	// ✅ Calculate risk using enhanced formula (with fallback support)
+	riskProbability := rg.calculateEnhancedRiskProbability(
+		previousLateCount,
+		avgDelayDays,
+		tenancyMonths,
+		partialPaymentRatio,
+		paymentTrend,
+		currentRentAmount,
+	)
 	
-	// ✅ FIXED: 4 risk bands matching paper (0.35, 0.65, 0.85)
+	// Determine risk level - 4 bands
 	riskLevel := "Low"
 	if riskProbability >= 0.85 {
 		riskLevel = "Critical"
@@ -470,16 +550,18 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 			}
 			return "No payments yet"
 		}(),
-		CurrentRentAmount: currentRentAmount,
-		RentToIncomeRatio: 0.3, // Default, can be calculated if income data available
-		TenancyMonths:     tenancyMonths,
-		EmploymentStatus:  "Unknown", // Not stored in database
-		CreditScore:       650,       // Default, not stored
-		ComplaintCount:    0,         // Not tracked yet
-		PropertyDamageCount: 0,       // Not tracked yet
-		Notes:             fmt.Sprintf("Tenant: %s", tenantName),
-		CreatedAt:         time.Now().Format(time.RFC3339),
-		UpdatedAt:         time.Now().Format(time.RFC3339),
+		CurrentRentAmount:   currentRentAmount,
+		RentToIncomeRatio:   0.3,
+		TenancyMonths:       tenancyMonths,
+		EmploymentStatus:    "Unknown",
+		CreditScore:         650,
+		ComplaintCount:      0,
+		PropertyDamageCount: 0,
+		PartialPaymentRatio: partialPaymentRatio,
+		PaymentTrend:        paymentTrend,
+		Notes:               fmt.Sprintf("Tenant: %s", tenantName),
+		CreatedAt:           time.Now().Format(time.RFC3339),
+		UpdatedAt:           time.Now().Format(time.RFC3339),
 	}
 
 	// Cache the tenant
@@ -490,37 +572,80 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 	return tenant, nil
 }
 
-// Calculate risk probability based on payment history
-func (rg *ResponseGenerator) calculateRiskProbability(lateCount int, avgDelay float64, tenancyMonths int) float64 {
+// ✅ ENHANCED RISK CALCULATION - Matches Figure 2
+func (rg *ResponseGenerator) calculateEnhancedRiskProbability(
+	lateCount int, 
+	avgDelay float64, 
+	tenancyMonths int,
+	partialPaymentRatio float64,
+	paymentTrend float64,
+	rentAmount float64,
+) float64 {
 	risk := 0.0
 
-	// Late payment count factor (0-0.4)
+	// 1. Late payment count factor (0-0.10) - 10% weight
 	if lateCount > 0 {
-		risk += float64(lateCount) * 0.08
-		if risk > 0.4 {
-			risk = 0.4
+		lateRisk := float64(lateCount) * 0.02
+		if lateRisk > 0.10 {
+			lateRisk = 0.10
 		}
+		risk += lateRisk
 	}
 
-	// Average delay factor (0-0.3)
+	// 2. Average delay factor (0-0.25) - 25% weight
 	if avgDelay > 0 {
-		delayRisk := avgDelay / 30.0 * 0.3
-		if delayRisk > 0.3 {
-			delayRisk = 0.3
+		delayRisk := (avgDelay / 30.0) * 0.25
+		if delayRisk > 0.25 {
+			delayRisk = 0.25
 		}
 		risk += delayRisk
 	}
 
-	// Tenancy duration factor (reduces risk, 0 to -0.2)
+	// 3. Payment severity/trend factor (0-0.15) - 15% weight
+	if paymentTrend > 0 {
+		// Positive trend = getting worse
+		trendRisk := paymentTrend * 0.05
+		if trendRisk > 0.15 {
+			trendRisk = 0.15
+		}
+		risk += trendRisk
+	} else if paymentTrend < 0 {
+		// Negative trend = improving
+		trendBonus := paymentTrend * 0.03
+		if trendBonus < -0.10 {
+			trendBonus = -0.10
+		}
+		risk += trendBonus
+	}
+
+	// 4. Partial payment ratio factor (0-0.15) - 15% weight
+	if partialPaymentRatio > 0 {
+		partialRisk := partialPaymentRatio * 0.15
+		if partialRisk > 0.15 {
+			partialRisk = 0.15
+		}
+		risk += partialRisk
+	}
+
+	// 5. Rent-to-income ratio proxy (0-0.10) - 10% weight
+	if rentAmount > 1000 {
+		incomeRisk := 0.05
+		if rentAmount > 1500 {
+			incomeRisk = 0.10
+		}
+		risk += incomeRisk
+	}
+
+	// 6. Tenancy duration bonus (0 to -0.15) - 15% reduction
 	if tenancyMonths > 12 {
-		tenancyBonus := float64(tenancyMonths-12) / 60.0 * 0.2
-		if tenancyBonus > 0.2 {
-			tenancyBonus = 0.2
+		tenancyBonus := float64(tenancyMonths-12) / 60.0 * 0.15
+		if tenancyBonus > 0.15 {
+			tenancyBonus = 0.15
 		}
 		risk -= tenancyBonus
 	}
 
-	// Ensure risk is between 0 and 1
+	// Clamp to [0, 1]
 	if risk < 0 {
 		risk = 0
 	}
@@ -531,13 +656,19 @@ func (rg *ResponseGenerator) calculateRiskProbability(lateCount int, avgDelay fl
 	return risk
 }
 
+// ⚠️ FALLBACK: Simple risk calculation for backward compatibility
+func (rg *ResponseGenerator) calculateRiskProbability(lateCount int, avgDelay float64, tenancyMonths int) float64 {
+	// Use enhanced calculation with default values for missing metrics
+	return rg.calculateEnhancedRiskProbability(lateCount, avgDelay, tenancyMonths, 0, 0, 0)
+}
+
 // Generate synthetic tenant for unknown IDs
 func (rg *ResponseGenerator) generateSyntheticTenant(id string) *ChatbotTenant {
 	rand.Seed(time.Now().UnixNano())
 
 	riskProb := rand.Float64()
 	
-	// ✅ FIXED: 4 risk bands matching paper (0.35, 0.65, 0.85)
+	// 4 risk bands
 	riskLevel := "Low"
 	if riskProb >= 0.85 {
 		riskLevel = "Critical"
@@ -561,6 +692,8 @@ func (rg *ResponseGenerator) generateSyntheticTenant(id string) *ChatbotTenant {
 		CreditScore:         300 + rand.Intn(550),
 		ComplaintCount:      rand.Intn(3),
 		PropertyDamageCount: rand.Intn(2),
+		PartialPaymentRatio: rand.Float64() * 0.3,
+		PaymentTrend:        (rand.Float64() - 0.5) * 4,
 		Notes:               "Synthetic tenant data",
 		CreatedAt:           time.Now().Format(time.RFC3339),
 		UpdatedAt:           time.Now().Format(time.RFC3339),
@@ -584,17 +717,14 @@ func (rg *ResponseGenerator) GetAllTenants() []*ChatbotTenant {
 	return tenants
 }
 
-// FormatPhoneNumberForDisplay adds leading zero to 10-digit phone numbers for display
+// FormatPhoneNumberForDisplay adds leading zero to 10-digit phone numbers
 func FormatPhoneNumberForDisplay(phoneNumber string) string {
-	// If it's a 10-digit number starting with 1, add leading 0
 	if len(phoneNumber) == 10 && strings.HasPrefix(phoneNumber, "1") {
 		return "0" + phoneNumber
 	}
-	// If it's already 11 digits with leading 0, return as is
 	if len(phoneNumber) == 11 && strings.HasPrefix(phoneNumber, "0") {
 		return phoneNumber
 	}
-	// Otherwise return as is (might be a tenant ID like T100)
 	return phoneNumber
 }
 
@@ -613,6 +743,20 @@ func (rg *ResponseGenerator) ExplainRiskForTenant(tenant *ChatbotTenant) string 
 		riskFactors = append(riskFactors, fmt.Sprintf("average delay of %.1f days", tenant.AvgDelayDays))
 	} else if tenant.AvgDelayDays > 2 {
 		riskFactors = append(riskFactors, fmt.Sprintf("moderate payment delays (%.1f days)", tenant.AvgDelayDays))
+	}
+
+	// ✅ ENHANCED: Include partial payment ratio
+	if tenant.PartialPaymentRatio > 0.2 {
+		riskFactors = append(riskFactors, fmt.Sprintf("high partial payment rate (%.0f%%)", tenant.PartialPaymentRatio*100))
+	} else if tenant.PartialPaymentRatio > 0.1 {
+		riskFactors = append(riskFactors, fmt.Sprintf("some partial payments (%.0f%%)", tenant.PartialPaymentRatio*100))
+	}
+
+	// ✅ ENHANCED: Include payment trend
+	if tenant.PaymentTrend > 1 {
+		riskFactors = append(riskFactors, "worsening payment pattern")
+	} else if tenant.PaymentTrend < -1 {
+		riskFactors = append(riskFactors, "improving payment pattern")
 	}
 
 	if tenant.RentToIncomeRatio > 0.4 {
@@ -657,7 +801,7 @@ func (rg *ResponseGenerator) RecommendActionForTenant(tenant *ChatbotTenant) str
 
 	actions := []string{}
 
-	// ✅ FIXED: Updated to 4 risk bands matching paper
+	// 4 risk bands with specific interventions
 	if tenant.RiskProbability >= 0.85 {
 		// Critical Risk (≥ 0.85)
 		actions = append(actions,
@@ -713,13 +857,13 @@ func (rg *ResponseGenerator) RecommendAction(tenantID string) string {
 func (rg *ResponseGenerator) MonthlySummary() string {
 	allTenants := rg.GetAllTenants()
 
-	// ✅ FIXED: Count all 4 risk bands
+	// Count all 4 risk bands
 	criticalRisk := 0
 	highRisk := 0
 	mediumRisk := 0
 	lowRisk := 0
 	totalRent := 0.0
-	totalAtRisk := 0.0 // Critical + High risk rent
+	totalAtRisk := 0.0
 
 	for _, tenant := range allTenants {
 		totalRent += tenant.CurrentRentAmount
@@ -749,7 +893,7 @@ func (rg *ResponseGenerator) MonthlySummary() string {
 	summary += fmt.Sprintf("- 🟡 Medium Risk: %d tenants\n", mediumRisk)
 	summary += fmt.Sprintf("- 🟢 Low Risk: %d tenants\n\n", lowRisk)
 
-	// Top critical/high-risk tenants
+	// Top at-risk tenants
 	if criticalRisk + highRisk > 0 {
 		summary += "**Top At-Risk Tenants**:\n"
 		count := 0
@@ -770,7 +914,6 @@ func (rg *ResponseGenerator) MonthlySummary() string {
 func (rg *ResponseGenerator) ListHighRisk() string {
 	allTenants := rg.GetAllTenants()
 
-	// ✅ FIXED: List both Critical and High risk tenants
 	criticalTenants := []string{}
 	highRiskTenants := []string{}
 	
@@ -814,12 +957,10 @@ func (rg *ResponseGenerator) CompareTenants(tenantIDs []string) string {
 	
 	for _, id := range tenantIDs {
 		log.Printf("CompareTenants: Looking up tenant with ID/phone: %s", id)
-		// Try to get tenant by phone number first
 		if tenant, err := rg.GetTenantByPhone(id); err == nil {
 			log.Printf("CompareTenants: Found tenant by phone: %s", id)
 			tenants = append(tenants, tenant)
 		} else if tenant, exists := rg.GetTenant(id); exists {
-			// Fallback to ID-based lookup
 			log.Printf("CompareTenants: Found tenant by ID: %s", id)
 			tenants = append(tenants, tenant)
 		} else {
@@ -830,7 +971,6 @@ func (rg *ResponseGenerator) CompareTenants(tenantIDs []string) string {
 
 	if len(tenants) < 2 {
 		if len(errors) > 0 {
-			// Format error phone numbers for display
 			formattedErrors := make([]string, len(errors))
 			for i, err := range errors {
 				formattedErrors[i] = FormatPhoneNumberForDisplay(err)
@@ -842,7 +982,6 @@ func (rg *ResponseGenerator) CompareTenants(tenantIDs []string) string {
 
 	comparison := "**Tenant Comparison**\n\n"
 	
-	// Use a more mobile-friendly format with cards instead of table
 	for i, tenant := range tenants {
 		if i > 0 {
 			comparison += "\n"
@@ -854,6 +993,20 @@ func (rg *ResponseGenerator) CompareTenants(tenantIDs []string) string {
 		comparison += fmt.Sprintf("- Late Payments: %d\n", tenant.PreviousLateCount)
 		comparison += fmt.Sprintf("- Avg Delay: %.1f days\n", tenant.AvgDelayDays)
 		comparison += fmt.Sprintf("- Rent: $%.0f\n", tenant.CurrentRentAmount)
+		
+		// ✅ ENHANCED: Show additional factors if available
+		if tenant.PartialPaymentRatio > 0 {
+			comparison += fmt.Sprintf("- Partial Payments: %.0f%%\n", tenant.PartialPaymentRatio*100)
+		}
+		if tenant.PaymentTrend != 0 {
+			trend := "stable"
+			if tenant.PaymentTrend > 0 {
+				trend = "worsening"
+			} else if tenant.PaymentTrend < 0 {
+				trend = "improving"
+			}
+			comparison += fmt.Sprintf("- Payment Trend: %s\n", trend)
+		}
 	}
 
 	log.Printf("CompareTenants: Returning comparison with %d tenants", len(tenants))
@@ -892,17 +1045,12 @@ Please rephrase your question using one of these topics.`
 func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *ChatResponse {
 	startTime := time.Now()
 
-	// Initialize detector
 	detector := NewIntentDetector()
-
-	// Detect intent
 	intent, confidence := detector.Detect(message)
 
-	// Extract phone numbers from message (preferred) or tenant IDs
 	extractedPhones := detector.ExtractPhoneNumbers(message)
 	extractedIDs := detector.ExtractTenantIDs(message)
 	
-	// Prefer phone numbers over IDs
 	if tenantID == "" {
 		if len(extractedPhones) > 0 {
 			tenantID = extractedPhones[0]
@@ -911,7 +1059,6 @@ func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *Ch
 		}
 	}
 
-	// Generate response based on intent
 	responseText := ""
 	suggestedFollowups := []string{}
 	var data any
@@ -919,11 +1066,9 @@ func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *Ch
 	switch intent {
 	case "EXPLAIN_RISK":
 		if tenantID != "" {
-			// Try to get tenant by phone number first
 			var tenant *ChatbotTenant
 			var err error
 			if tenant, err = rg.GetTenantByPhone(tenantID); err != nil {
-				// Fallback to ID-based lookup
 				var exists bool
 				tenant, exists = rg.GetTenant(tenantID)
 				if !exists {
@@ -944,11 +1089,9 @@ func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *Ch
 
 	case "RECOMMEND_ACTION":
 		if tenantID != "" {
-			// Try to get tenant by phone number first
 			var tenant *ChatbotTenant
 			var err error
 			if tenant, err = rg.GetTenantByPhone(tenantID); err != nil {
-				// Fallback to ID-based lookup
 				var exists bool
 				tenant, exists = rg.GetTenant(tenantID)
 				if !exists {
@@ -985,7 +1128,6 @@ func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *Ch
 		}
 
 	case "COMPARE_TENANTS":
-		// Prefer phone numbers over IDs
 		ids := extractedPhones
 		if len(ids) == 0 {
 			ids = extractedIDs
@@ -993,7 +1135,6 @@ func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *Ch
 		if len(ids) == 0 && tenantID != "" {
 			ids = append(ids, tenantID)
 		}
-		// Log extracted phone numbers for debugging
 		log.Printf("COMPARE_TENANTS: extractedPhones=%v, extractedIDs=%v, tenantID=%s, final ids=%v", 
 			extractedPhones, extractedIDs, tenantID, ids)
 		responseText = rg.CompareTenants(ids)
@@ -1031,13 +1172,11 @@ func getChatbotResponseGenerator() *ResponseGenerator {
 
 // ChatHandler handles POST requests to process chat messages
 func ChatHandler(w http.ResponseWriter, r *http.Request) {
-	// Set CORS headers
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
-	// Handle preflight
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
@@ -1048,7 +1187,6 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse request
 	var req ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error decoding chat request: %v", err)
@@ -1061,11 +1199,9 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Process query
 	responseGen := getChatbotResponseGenerator()
 	response := responseGen.ProcessMessage(req.Message, req.TenantID)
 
-	// Send response
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Error encoding chat response: %v", err)
 		http.Error(w, "Error generating response", http.StatusInternalServerError)
@@ -1079,9 +1215,10 @@ func ChatHealthHandler(w http.ResponseWriter, r *http.Request) {
 	response := map[string]any{
 		"status":      "healthy",
 		"timestamp":   time.Now().Format(time.RFC3339),
-		"version":     "1.0.0",
+		"version":     "1.0.0-enhanced",
 		"tenants":     len(getChatbotResponseGenerator().GetAllTenants()),
 		"risk_bands":  "4 (Low < 0.35, Medium 0.35-0.65, High 0.65-0.85, Critical ≥ 0.85)",
+		"features":    "Enhanced risk calculation with 6 factors (late count, delay, trend, partial payments, rent burden, tenancy)",
 	}
 	json.NewEncoder(w).Encode(response)
 }
