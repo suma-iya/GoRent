@@ -71,6 +71,7 @@ func NewIntentDetector() *IntentDetector {
 		regexp.MustCompile(`(?i)what.*makes.*risk`),
 		regexp.MustCompile(`(?i)risk.*factors`),
 		regexp.MustCompile(`(?i)why.*high.*risk`),
+		regexp.MustCompile(`(?i)why.*critical.*risk`),
 	}
 
 	id.patterns["RECOMMEND_ACTION"] = []*regexp.Regexp{
@@ -86,6 +87,8 @@ func NewIntentDetector() *IntentDetector {
 		regexp.MustCompile(`(?i)who.*high.*risk`),
 		regexp.MustCompile(`(?i)show.*risky`),
 		regexp.MustCompile(`(?i)high.*risk.*tenant`),
+		regexp.MustCompile(`(?i)list.*critical.*risk`),
+		regexp.MustCompile(`(?i)critical.*tenant`),
 	}
 
 	id.patterns["MONTHLY_SUMMARY"] = []*regexp.Regexp{
@@ -172,12 +175,10 @@ func (id *IntentDetector) ExtractTenantIDs(message string) []string {
 // Extract phone numbers from message
 func (id *IntentDetector) ExtractPhoneNumbers(message string) []string {
 	// Pattern 1: Match 11-digit numbers starting with 0 (01794002263 format)
-	// This matches: 0 (optional) + 1 + [3-9] + 9 more digits = 11 digits total
 	re1 := regexp.MustCompile(`0?1[3-9]\d{9}`)
 	matches1 := re1.FindAllString(message, -1)
 	
 	// Pattern 2: Match 10-digit numbers starting with 1 (1794002263 format, no leading 0)
-	// This matches: 1 + [3-9] + 8 more digits = 10 digits total
 	re2 := regexp.MustCompile(`1[3-9]\d{8}`)
 	matches2 := re2.FindAllString(message, -1)
 	
@@ -247,7 +248,7 @@ func (rg *ResponseGenerator) initializeSampleData() {
 	rg.mu.Lock()
 	defer rg.mu.Unlock()
 
-	// Create sample tenants
+	// Create sample tenants with 4 risk bands
 	sampleTenants := []*ChatbotTenant{
 		{
 			ID:                  "01712345679",
@@ -269,7 +270,7 @@ func (rg *ResponseGenerator) initializeSampleData() {
 		},
 		{
 			ID:                  "01712345678",
-			RiskProbability:     0.45,
+			RiskProbability:     0.50,
 			RiskLevel:           "Medium",
 			PreviousLateCount:   1,
 			AvgDelayDays:        2.0,
@@ -305,7 +306,7 @@ func (rg *ResponseGenerator) initializeSampleData() {
 		},
 		{
 			ID:                  "01712345675",
-			RiskProbability:     0.15,
+			RiskProbability:     0.20,
 			RiskLevel:           "Low",
 			PreviousLateCount:   0,
 			AvgDelayDays:        0.0,
@@ -441,10 +442,14 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 
 	// Calculate risk probability based on metrics
 	riskProbability := rg.calculateRiskProbability(previousLateCount, avgDelayDays, tenancyMonths)
+	
+	// ✅ FIXED: 4 risk bands matching paper (0.35, 0.65, 0.85)
 	riskLevel := "Low"
-	if riskProbability >= 0.7 {
+	if riskProbability >= 0.85 {
+		riskLevel = "Critical"
+	} else if riskProbability >= 0.65 {
 		riskLevel = "High"
-	} else if riskProbability >= 0.4 {
+	} else if riskProbability >= 0.35 {
 		riskLevel = "Medium"
 	}
 
@@ -531,10 +536,14 @@ func (rg *ResponseGenerator) generateSyntheticTenant(id string) *ChatbotTenant {
 	rand.Seed(time.Now().UnixNano())
 
 	riskProb := rand.Float64()
+	
+	// ✅ FIXED: 4 risk bands matching paper (0.35, 0.65, 0.85)
 	riskLevel := "Low"
-	if riskProb > 0.7 {
+	if riskProb >= 0.85 {
+		riskLevel = "Critical"
+	} else if riskProb >= 0.65 {
 		riskLevel = "High"
-	} else if riskProb > 0.4 {
+	} else if riskProb >= 0.35 {
 		riskLevel = "Medium"
 	}
 
@@ -648,7 +657,19 @@ func (rg *ResponseGenerator) RecommendActionForTenant(tenant *ChatbotTenant) str
 
 	actions := []string{}
 
-	if tenant.RiskProbability >= 0.8 || tenant.PreviousLateCount >= 4 {
+	// ✅ FIXED: Updated to 4 risk bands matching paper
+	if tenant.RiskProbability >= 0.85 {
+		// Critical Risk (≥ 0.85)
+		actions = append(actions,
+			"⚠️ URGENT: Immediate contact required",
+			"Consider legal consultation",
+			"Document all communications",
+			"Review lease termination options",
+			"Offer last-chance payment plan with strict conditions",
+			"Flag for daily monitoring",
+		)
+	} else if tenant.RiskProbability >= 0.65 {
+		// High Risk (0.65 - 0.85)
 		actions = append(actions,
 			"Send early reminder 10 days before due date",
 			"Offer flexible payment plan options",
@@ -656,28 +677,25 @@ func (rg *ResponseGenerator) RecommendActionForTenant(tenant *ChatbotTenant) str
 			"Flag for weekly monitoring",
 			"Consider additional security deposit on renewal",
 		)
-	} else if tenant.RiskProbability >= 0.6 || tenant.PreviousLateCount >= 2 {
+	} else if tenant.RiskProbability >= 0.35 {
+		// Medium Risk (0.35 - 0.65)
 		actions = append(actions,
-			"Send reminder 5 days before due date",
 			"Monitor payment closely this month",
-			"Consider payment reminder automation",
-			"Check-in call after due date",
-		)
-	} else if tenant.RiskProbability >= 0.4 {
-		actions = append(actions,
-			"Standard reminder 3 days before due date",
-			"Monitor for any changes",
-			"Consider gentle reminder if late",
+			"Send reminder if late by 1 day",
+			"Consider gentle follow-up call",
+			"Review payment history trends",
 		)
 	} else {
+		// Low Risk (< 0.35)
 		actions = append(actions,
-			"Standard automated reminders",
+			"Standard reminder 3 days before due date",
 			"Regular monthly monitoring",
+			"Maintain positive relationship",
 		)
 	}
 
 	displayID := FormatPhoneNumberForDisplay(tenant.ID)
-	actionText := fmt.Sprintf("**Recommended Actions for %s**\n\n", displayID)
+	actionText := fmt.Sprintf("**Recommended Actions for %s (%s Risk)**\n\n", displayID, tenant.RiskLevel)
 	for i, action := range actions {
 		actionText += fmt.Sprintf("%d. %s\n", i+1, action)
 	}
@@ -695,19 +713,24 @@ func (rg *ResponseGenerator) RecommendAction(tenantID string) string {
 func (rg *ResponseGenerator) MonthlySummary() string {
 	allTenants := rg.GetAllTenants()
 
+	// ✅ FIXED: Count all 4 risk bands
+	criticalRisk := 0
 	highRisk := 0
 	mediumRisk := 0
 	lowRisk := 0
 	totalRent := 0.0
-	totalAtRisk := 0.0
+	totalAtRisk := 0.0 // Critical + High risk rent
 
 	for _, tenant := range allTenants {
 		totalRent += tenant.CurrentRentAmount
 
-		if tenant.RiskProbability >= 0.7 {
+		if tenant.RiskProbability >= 0.85 {
+			criticalRisk++
+			totalAtRisk += tenant.CurrentRentAmount
+		} else if tenant.RiskProbability >= 0.65 {
 			highRisk++
 			totalAtRisk += tenant.CurrentRentAmount
-		} else if tenant.RiskProbability >= 0.4 {
+		} else if tenant.RiskProbability >= 0.35 {
 			mediumRisk++
 		} else {
 			lowRisk++
@@ -718,19 +741,20 @@ func (rg *ResponseGenerator) MonthlySummary() string {
 	summary += fmt.Sprintf("**Overview**:\n")
 	summary += fmt.Sprintf("- Total Tenants: %d\n", len(allTenants))
 	summary += fmt.Sprintf("- Total Monthly Rent: $%.2f\n", totalRent)
-	summary += fmt.Sprintf("- Rent at High Risk: $%.2f\n\n", totalAtRisk)
+	summary += fmt.Sprintf("- Rent at Risk (Critical + High): $%.2f\n\n", totalAtRisk)
 
 	summary += fmt.Sprintf("**Risk Distribution**:\n")
-	summary += fmt.Sprintf("- High Risk: %d tenants\n", highRisk)
-	summary += fmt.Sprintf("- Medium Risk: %d tenants\n", mediumRisk)
-	summary += fmt.Sprintf("- Low Risk: %d tenants\n\n", lowRisk)
+	summary += fmt.Sprintf("- 🔴 Critical Risk: %d tenants\n", criticalRisk)
+	summary += fmt.Sprintf("- 🟠 High Risk: %d tenants\n", highRisk)
+	summary += fmt.Sprintf("- 🟡 Medium Risk: %d tenants\n", mediumRisk)
+	summary += fmt.Sprintf("- 🟢 Low Risk: %d tenants\n\n", lowRisk)
 
-	// Top high-risk tenants
-	if highRisk > 0 {
-		summary += "**Top High-Risk Tenants**:\n"
+	// Top critical/high-risk tenants
+	if criticalRisk + highRisk > 0 {
+		summary += "**Top At-Risk Tenants**:\n"
 		count := 0
 		for _, tenant := range allTenants {
-			if tenant.RiskProbability >= 0.7 && count < 5 {
+			if tenant.RiskProbability >= 0.65 && count < 5 {
 				displayID := FormatPhoneNumberForDisplay(tenant.ID)
 				summary += fmt.Sprintf("- %s - %s (%.2f) - $%.0f/month\n",
 					displayID, tenant.RiskLevel, tenant.RiskProbability, tenant.CurrentRentAmount)
@@ -746,20 +770,34 @@ func (rg *ResponseGenerator) MonthlySummary() string {
 func (rg *ResponseGenerator) ListHighRisk() string {
 	allTenants := rg.GetAllTenants()
 
+	// ✅ FIXED: List both Critical and High risk tenants
+	criticalTenants := []string{}
 	highRiskTenants := []string{}
+	
 	for _, tenant := range allTenants {
-		if tenant.RiskProbability >= 0.7 {
-			displayID := FormatPhoneNumberForDisplay(tenant.ID)
+		displayID := FormatPhoneNumberForDisplay(tenant.ID)
+		if tenant.RiskProbability >= 0.85 {
+			criticalTenants = append(criticalTenants,
+				fmt.Sprintf("%s (%.2f - Critical)", displayID, tenant.RiskProbability))
+		} else if tenant.RiskProbability >= 0.65 {
 			highRiskTenants = append(highRiskTenants,
-				fmt.Sprintf("%s (%.2f)", displayID, tenant.RiskProbability))
+				fmt.Sprintf("%s (%.2f - High)", displayID, tenant.RiskProbability))
 		}
 	}
 
-	if len(highRiskTenants) == 0 {
-		return "No tenants currently exceed the high-risk threshold."
+	if len(criticalTenants) == 0 && len(highRiskTenants) == 0 {
+		return "No tenants currently exceed the high-risk threshold (0.65)."
 	}
 
-	return "High-risk tenants: " + strings.Join(highRiskTenants, ", ")
+	result := ""
+	if len(criticalTenants) > 0 {
+		result += "**🔴 Critical Risk Tenants:** " + strings.Join(criticalTenants, ", ") + "\n\n"
+	}
+	if len(highRiskTenants) > 0 {
+		result += "**🟠 High Risk Tenants:** " + strings.Join(highRiskTenants, ", ")
+	}
+
+	return result
 }
 
 // Compare tenants
@@ -829,19 +867,21 @@ func (rg *ResponseGenerator) UnknownIntent() string {
 **Risk Analysis**:
 - Explain why a tenant is at specific risk level
 - Compare risk between tenants
+- List Critical, High, Medium, or Low risk tenants
 
 **Action Planning**:
 - Get recommended actions for specific tenants
-- List all high-risk tenants
+- Understand intervention strategies for each risk level
 
 **Reporting**:
-- Monthly risk summaries
+- Monthly risk summaries with 4-band breakdown
 - Payment history details
 
 **Examples**:
 - "Why is tenant with phone 01712345678 high risk?"
 - "What should I do for tenant 01987654321?"
 - "List high risk tenants"
+- "List critical risk tenants"
 - "Compare tenants 01712345678 and 01987654321"
 - "Show monthly summary"
 
@@ -939,6 +979,7 @@ func (rg *ResponseGenerator) ProcessMessage(message string, tenantID string) *Ch
 		responseText = rg.MonthlySummary()
 		suggestedFollowups = []string{
 			"List high risk tenants",
+			"List critical risk tenants",
 			"Compare T100 and T087",
 			"Show payment trends",
 		}
@@ -1036,11 +1077,11 @@ func ChatHandler(w http.ResponseWriter, r *http.Request) {
 func ChatHealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	response := map[string]any{
-		"status":    "healthy",
-		"timestamp": time.Now().Format(time.RFC3339),
-		"version":   "1.0.0",
-		"tenants":   len(getChatbotResponseGenerator().GetAllTenants()),
+		"status":      "healthy",
+		"timestamp":   time.Now().Format(time.RFC3339),
+		"version":     "1.0.0",
+		"tenants":     len(getChatbotResponseGenerator().GetAllTenants()),
+		"risk_bands":  "4 (Low < 0.35, Medium 0.35-0.65, High 0.65-0.85, Critical ≥ 0.85)",
 	}
 	json.NewEncoder(w).Encode(response)
 }
-
