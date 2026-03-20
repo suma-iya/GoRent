@@ -124,7 +124,7 @@ The conversational interface provides natural language access to tenant analytic
 
 The system uses a deterministic, transparent scoring formula based on observable payment behavior:
 ```
-Risk Score = f(late_payments, avg_delay, severity_trend, partial_payments, rent_burden, tenancy_duration)
+Risk Score = f(delay_rate, avg_delay, severity_factor, partial_payments, trend, inconsistency)
 
   ● Critical Risk  ≥ 0.85  🔴
   ● High Risk      0.65 – 0.84  🟠
@@ -132,13 +132,13 @@ Risk Score = f(late_payments, avg_delay, severity_trend, partial_payments, rent_
   ● Low Risk       < 0.35  🟢
 ```
 
-**Enhanced Risk Factors:**
-- **Late payment count** (10% weight) — Number of late payments
-- **Average delay days** (25% weight) — How late payments typically are
-- **Payment severity trend** (15% weight) — Whether behavior is worsening or improving
-- **Partial payment ratio** (15% weight) — Frequency of incomplete payments
-- **Rent-to-income indicator** (10% weight) — High rent burden assessment
-- **Tenancy duration bonus** (-15% reduction) — Long tenancy reduces risk
+**Enhanced Risk Factors (matching Figure 2 in paper):**
+- **Delay Rate (DR)** — 30% weight — Proportion of late payments
+- **Average Delay (D)** — 25% weight — How late payments typically are
+- **Severity Factor (SF)** — 15% weight — Weighted late payment impact (frequency × magnitude)
+- **Partial Payments (PP)** — 15% weight — Frequency of incomplete payments
+- **Trend (TR)** — 10% weight — Payment behavior trajectory (improving vs worsening)
+- **Inconsistency (IC)** — 10% weight — Payment pattern volatility
 
 **Interface Features:**
 - Extracts and normalizes **Bangladeshi phone numbers** automatically
