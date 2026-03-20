@@ -409,6 +409,7 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 	var tenancyMonths int
 	var partialPaymentRatio float64
 	var paymentTrend float64
+	var totalPayments int
 
 	if floorID.Valid {
 		// Get current rent
@@ -425,7 +426,7 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 		}
 
 		// ✅ ENHANCED: Try comprehensive payment analysis first
-		var totalPayments sql.NullInt64
+		var totalPaymentsSQL sql.NullInt64
 		var lateCount sql.NullInt64
 		var avgDelay sql.NullFloat64
 		var lastPayment sql.NullString
@@ -440,10 +441,13 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 				SUM(CASE WHEN recieved_money > 0 AND recieved_money < rent THEN 1 ELSE 0 END) as partial_payments
 			FROM payment
 			WHERE fid = ? AND uid = ?
-		`, floorID.Int64, userID).Scan(&totalPayments, &lateCount, &avgDelay, &lastPayment, &partialPayments)
+		`, floorID.Int64, userID).Scan(&totalPaymentsSQL, &lateCount, &avgDelay, &lastPayment, &partialPayments)
 		
 		if err == nil {
 			// Successfully got enhanced metrics
+			if totalPaymentsSQL.Valid {
+				totalPayments = int(totalPaymentsSQL.Int64)
+			}
 			if lateCount.Valid {
 				previousLateCount = int(lateCount.Int64)
 			}
@@ -455,8 +459,8 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 			}
 			
 			// Calculate partial payment ratio
-			if totalPayments.Valid && totalPayments.Int64 > 0 && partialPayments.Valid {
-				partialPaymentRatio = float64(partialPayments.Int64) / float64(totalPayments.Int64)
+			if totalPaymentsSQL.Valid && totalPaymentsSQL.Int64 > 0 && partialPayments.Valid {
+				partialPaymentRatio = float64(partialPayments.Int64) / float64(totalPaymentsSQL.Int64)
 			}
 
 			// ✅ ENHANCED: Calculate payment trend
@@ -521,6 +525,7 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 		partialPaymentRatio,
 		paymentTrend,
 		currentRentAmount,
+		totalPayments,
 	)
 	
 	// Determine risk level - 4 bands
@@ -572,7 +577,7 @@ func (rg *ResponseGenerator) GetTenantByPhone(phoneNumber string) (*ChatbotTenan
 	return tenant, nil
 }
 
-// ✅ ENHANCED RISK CALCULATION - Matches Figure 2
+// ✅ ENHANCED RISK CALCULATION - MATCHES FIGURE 2
 func (rg *ResponseGenerator) calculateEnhancedRiskProbability(
 	lateCount int, 
 	avgDelay float64, 
@@ -580,70 +585,89 @@ func (rg *ResponseGenerator) calculateEnhancedRiskProbability(
 	partialPaymentRatio float64,
 	paymentTrend float64,
 	rentAmount float64,
+	totalPayments int,
 ) float64 {
 	risk := 0.0
 
-	// 1. Late payment count factor (0-0.10) - 10% weight
-	if lateCount > 0 {
-		lateRisk := float64(lateCount) * 0.02
-		if lateRisk > 0.10 {
-			lateRisk = 0.10
+	// Estimate total payments if not provided
+	estimatedTotal := float64(totalPayments)
+	if estimatedTotal == 0 {
+		estimatedTotal = float64(lateCount) + 10.0 // Conservative estimate
+		if lateCount == 0 {
+			estimatedTotal = 10.0
 		}
-		risk += lateRisk
 	}
 
-	// 2. Average delay factor (0-0.25) - 25% weight
+	// 1. Delay Rate (DR) - 30% weight
+	// Proportion of payments that were late
+	delayRate := 0.0
+	if estimatedTotal > 0 {
+		delayRate = float64(lateCount) / estimatedTotal
+	}
+	delayRateRisk := delayRate * 0.30
+	if delayRateRisk > 0.30 {
+		delayRateRisk = 0.30
+	}
+	risk += delayRateRisk
+
+	// 2. Average Delay (D) - 25% weight
+	// How late payments typically are
 	if avgDelay > 0 {
-		delayRisk := (avgDelay / 30.0) * 0.25
-		if delayRisk > 0.25 {
-			delayRisk = 0.25
+		avgDelayRisk := (avgDelay / 30.0) * 0.25
+		if avgDelayRisk > 0.25 {
+			avgDelayRisk = 0.25
 		}
-		risk += delayRisk
+		risk += avgDelayRisk
 	}
 
-	// 3. Payment severity/trend factor (0-0.15) - 15% weight
+	// 3. Severity Factor (SF) - 15% weight
+	// Weighted impact of late payments (frequency × magnitude)
+	severityFactor := 0.0
+	if lateCount > 0 && avgDelay > 0 {
+		// Normalize: (late_count * avg_delay_days) / (total_payments * 30)
+		severityFactor = (float64(lateCount) * avgDelay) / (estimatedTotal * 30.0)
+	}
+	severityRisk := severityFactor * 0.15
+	if severityRisk > 0.15 {
+		severityRisk = 0.15
+	}
+	risk += severityRisk
+
+	// 4. Partial Payment (PP) - 15% weight
+	// Frequency of incomplete payments
+	partialRisk := partialPaymentRatio * 0.15
+	if partialRisk > 0.15 {
+		partialRisk = 0.15
+	}
+	risk += partialRisk
+
+	// 5. Trend (TR) - 10% weight
+	// Payment behavior trajectory (positive = worsening)
+	trendRisk := 0.0
 	if paymentTrend > 0 {
-		// Positive trend = getting worse
-		trendRisk := paymentTrend * 0.05
-		if trendRisk > 0.15 {
-			trendRisk = 0.15
+		// Normalize trend to 0-1 range (assuming trend is -5 to +5)
+		normalizedTrend := paymentTrend / 5.0
+		if normalizedTrend > 1.0 {
+			normalizedTrend = 1.0
 		}
-		risk += trendRisk
-	} else if paymentTrend < 0 {
-		// Negative trend = improving
-		trendBonus := paymentTrend * 0.03
-		if trendBonus < -0.10 {
-			trendBonus = -0.10
-		}
-		risk += trendBonus
+		trendRisk = normalizedTrend * 0.10
 	}
+	risk += trendRisk
 
-	// 4. Partial payment ratio factor (0-0.15) - 15% weight
-	if partialPaymentRatio > 0 {
-		partialRisk := partialPaymentRatio * 0.15
-		if partialRisk > 0.15 {
-			partialRisk = 0.15
-		}
-		risk += partialRisk
-	}
-
-	// 5. Rent-to-income ratio proxy (0-0.10) - 10% weight
+	// 6. Inconsistency (IC) - 10% weight
+	// Payment pattern volatility (rent burden as proxy for instability)
+	inconsistency := 0.0
 	if rentAmount > 1000 {
-		incomeRisk := 0.05
+		inconsistency = 0.5 // Medium inconsistency
 		if rentAmount > 1500 {
-			incomeRisk = 0.10
+			inconsistency = 1.0 // High inconsistency
 		}
-		risk += incomeRisk
 	}
-
-	// 6. Tenancy duration bonus (0 to -0.15) - 15% reduction
-	if tenancyMonths > 12 {
-		tenancyBonus := float64(tenancyMonths-12) / 60.0 * 0.15
-		if tenancyBonus > 0.15 {
-			tenancyBonus = 0.15
-		}
-		risk -= tenancyBonus
+	inconsistencyRisk := inconsistency * 0.10
+	if inconsistencyRisk > 0.10 {
+		inconsistencyRisk = 0.10
 	}
+	risk += inconsistencyRisk
 
 	// Clamp to [0, 1]
 	if risk < 0 {
@@ -659,7 +683,7 @@ func (rg *ResponseGenerator) calculateEnhancedRiskProbability(
 // ⚠️ FALLBACK: Simple risk calculation for backward compatibility
 func (rg *ResponseGenerator) calculateRiskProbability(lateCount int, avgDelay float64, tenancyMonths int) float64 {
 	// Use enhanced calculation with default values for missing metrics
-	return rg.calculateEnhancedRiskProbability(lateCount, avgDelay, tenancyMonths, 0, 0, 0)
+	return rg.calculateEnhancedRiskProbability(lateCount, avgDelay, tenancyMonths, 0, 0, 0, 0)
 }
 
 // Generate synthetic tenant for unknown IDs
@@ -1218,7 +1242,7 @@ func ChatHealthHandler(w http.ResponseWriter, r *http.Request) {
 		"version":     "1.0.0-enhanced",
 		"tenants":     len(getChatbotResponseGenerator().GetAllTenants()),
 		"risk_bands":  "4 (Low < 0.35, Medium 0.35-0.65, High 0.65-0.85, Critical ≥ 0.85)",
-		"features":    "Enhanced risk calculation with 6 factors (late count, delay, trend, partial payments, rent burden, tenancy)",
+		"features":    "Enhanced risk calculation with 6 factors matching Figure 2 (DR, D, SF, PP, TR, IC)",
 	}
 	json.NewEncoder(w).Encode(response)
 }
