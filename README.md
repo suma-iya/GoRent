@@ -2,7 +2,7 @@
 
 <br/>
 
-### Intelligent Property Rental Management
+### GoRent : Intelligent Property Rental Management
 
 <br/>
 
@@ -123,15 +123,24 @@ The conversational interface provides natural language access to tenant analytic
 **Risk Calculation Algorithm**
 
 The system uses a deterministic, transparent scoring formula based on observable payment behavior:
-
 ```
-Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
+Risk Score = f(late_payments, avg_delay, severity_trend, partial_payments, rent_burden, tenancy_duration)
 
-  ● High Risk   ≥ 0.7  🔴
-  ● Medium Risk  0.4 – 0.69  🟡
-  ● Low Risk    < 0.4  🟢
+  ● Critical Risk  ≥ 0.85  🔴
+  ● High Risk      0.65 – 0.84  🟠
+  ● Medium Risk    0.35 – 0.64  🟡
+  ● Low Risk       < 0.35  🟢
 ```
 
+**Enhanced Risk Factors:**
+- **Late payment count** (10% weight) — Number of late payments
+- **Average delay days** (25% weight) — How late payments typically are
+- **Payment severity trend** (15% weight) — Whether behavior is worsening or improving
+- **Partial payment ratio** (15% weight) — Frequency of incomplete payments
+- **Rent-to-income indicator** (10% weight) — High rent burden assessment
+- **Tenancy duration bonus** (-15% reduction) — Long tenancy reduces risk
+
+**Interface Features:**
 - Extracts and normalizes **Bangladeshi phone numbers** automatically
 - **Markdown-rendered** rich responses with suggested follow-ups
 - Persistent **chat history** (last 100 messages)
@@ -217,7 +226,6 @@ Risk Score = f(late_payments, avg_delay_days, tenancy_duration)
 ## 🏗 Architecture
 
 The system follows a clean **three-tier architecture**:
-
 ```
 ┌──────────────────────────────────────────────────────┐
 │                  PRESENTATION LAYER                  │
@@ -276,7 +284,6 @@ lib/utils/     — Utility helpers & localization
 ---
 
 ### 🔧 Backend Setup
-
 ```bash
 # 1. Clone the repository
 git clone https://github.com/suma-iya/GoRent.git
@@ -308,7 +315,6 @@ go run main.go
 ---
 
 ### 📱 Frontend Setup
-
 ```bash
 # 1. Navigate to the Flutter project
 cd go_rent_frontend
@@ -332,7 +338,6 @@ flutter run -d ios    # iOS (macOS only)
 ---
 
 ### 🐳 Docker — Full Stack
-
 ```bash
 # Start everything
 docker-compose up -d
@@ -410,7 +415,6 @@ docker-compose down
 
 
 ## 📁 Project Structure
-
 ```
 GoRent/
 ├── config/                     # DB config & Firebase credentials
@@ -461,7 +465,6 @@ GoRent/
 ## 🤝 Contributing
 
 Contributions are very welcome! Here's how to get started:
-
 ```bash
 # Fork → clone → branch
 git checkout -b feature/your-feature-name
@@ -508,7 +511,6 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ## 📖 Citation
 
 If you use GoRent in your research, please cite:
-
 ```bibtex
 @software{gorent2026,
   author = {Suma, Sumaiya Rahim and Shafi, Abdullah Al},
